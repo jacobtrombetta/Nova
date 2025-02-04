@@ -215,6 +215,18 @@ where
   }
 }
 
+impl<E: Engine> Commitment<E>
+where
+  E::GE: PairingGroup,
+{
+  /// Convert from G1Affine to Commitment
+  pub fn from_g1_affine(affine: G1Affine<E>) -> Self {
+    Commitment {
+      comm: <E::GE as DlogGroup>::group(&affine),
+    }
+  }
+}
+
 /// Provides a commitment engine
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommitmentEngine<E: Engine> {
