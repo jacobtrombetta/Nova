@@ -445,6 +445,7 @@ where
       // same.  One advantage is that computing f(u) could be decoupled
       // from kzg_open, it could be done later or separate from computing W.
 
+      let span = span!(Level::DEBUG, "EvaluationEngine::compute_witness_polynomial definition").entered();
       let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
         let d = f.len();
 
@@ -456,6 +457,7 @@ where
 
         h
       };
+      span.exit();
 
       let span = span!(Level::DEBUG, "EvaluationEngine::compute_witness_polynomial").entered();
       let h = compute_witness_polynomial(f, u);
@@ -473,6 +475,7 @@ where
                           u: &[E::Scalar],
                           transcript: &mut <E as Engine>::TE|
      -> (Vec<G1Affine<E>>, Vec<Vec<E::Scalar>>) {
+      let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - poly_eval").entered();
       let poly_eval = |f: &[E::Scalar], u: E::Scalar| -> E::Scalar {
         let mut v = f[0];
         let mut u_power = E::Scalar::ONE;
@@ -555,6 +558,7 @@ where
 
       (w, v)
     };
+    span.exit();
 
     ///// END helper closures //////////
 
