@@ -1,6 +1,5 @@
 //! This module implements the Nova traits for `bn256::Point`, `bn256::Scalar`, `grumpkin::Point`, `grumpkin::Scalar`.
 use crate::{
-  impl_traits,
   provider::traits::{DlogGroup, PairingGroup},
   traits::{Group, PrimeFieldExt, TranscriptReprTrait},
 };
@@ -52,10 +51,12 @@ impl Group for bn256::Point {
 impl DlogGroup for bn256::Point {
   type AffineGroupElement = bn256::Affine;
   #[cfg(not(feature = "blitzar"))]
+  #[tracing::instrument(name = "bn256::vartime_multiscalar_mul (cpu)", level = "debug", skip_all)]
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self {
     msm_best(scalars, bases)
   }
   #[cfg(feature = "blitzar")]
+  #[tracing::instrument(name = "bn256::vartime_multiscalar_mul (gpu)", level = "debug", skip_all)]
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self {
     super::blitzar::vartime_multiscalar_mul(scalars, bases)
   }
@@ -142,13 +143,109 @@ impl<G: DlogGroup> TranscriptReprTrait<G> for bn256::Affine {
   }
 }
 
-impl_traits!(
-  grumpkin,
-  GrumpkinPoint,
-  GrumpkinAffine,
-  "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47",
-  "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001"
-);
+impl Group for grumpkin::Point {
+    type Base = grumpkin::Base;
+    type Scalar = grumpkin::Scalar;
+    fn group_params() -> (Self::Base,Self::Base,BigInt,BigInt){
+        let A = grumpkin::Point::a();
+        let B = grumpkin::Point::b();
+        let order = BigInt::from_str_radix("30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47",16).unwrap();
+        let base = BigInt::from_str_radix("30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001",16).unwrap();
+        (A,B,order,base)
+    }
+
+    }
+impl DlogGroup for grumpkin::Point {
+    type AffineGroupElement = grumpkin::Affine;
+    #[tracing::instrument(name = "grumpkin::vartime_multiscalar_mul (cpu)", level = "debug", skip_all)]
+    fn vartime_multiscalar_mul(scalars: &[Self::Scalar],bases: &[Self::AffineGroupElement],) -> Self {
+        msm_best(scalars,bases)
+    }
+    fn affine(&self) -> Self::AffineGroupElement {
+        self.to_affine()
+    }
+    fn group(p: &Self::AffineGroupElement) -> Self {
+        grumpkin::Point::from(*p)
+    }
+    fn from_label(label: &'static[u8],n:usize) -> Vec<Self::AffineGroupElement>{
+        let mut shake = Shake256::default();
+        shake.update(label);
+        let mut reader = shake.finalize_xof();
+        let mut uniform_bytes_vec = Vec::new();
+        for _ in 0..n {
+            let mut uniform_bytes = [0u8;
+            32];
+            reader.read_exact(&mut uniform_bytes).unwrap();
+            uniform_bytes_vec.push(uniform_bytes);
+        }let gens_proj:Vec<GrumpkinPoint>  = (0..n).into_par_iter().map(|i|{
+            let hash = GrumpkinPoint::hash_to_curve("from_uniform_bytes");
+            hash(&uniform_bytes_vec[i])
+        }).collect();
+        let num_threads = rayon::current_num_threads();
+        if gens_proj.len()>num_threads {
+            let chunk = (gens_proj.len()as f64/num_threads as f64).ceil()as usize;
+            (0..num_threads).into_par_iter().flat_map(|i|{
+                let start = i*chunk;
+                let end = if i==num_threads-1 {
+                    gens_proj.len()
+                }else {
+                    core::cmp::min((i+1)*chunk,gens_proj.len())
+                };
+                if end>start {
+                    let mut gens = vec![GrumpkinAffine::identity();
+                    end-start];
+                    <Self as Curve>::batch_normalize(&gens_proj[start..end], &mut gens);
+                    gens
+                }else {
+                    vec![]
+                }
+            }).collect()
+        }else {
+            let mut gens = vec![GrumpkinAffine::identity();
+            n];
+            <Self as Curve>::batch_normalize(&gens_proj, &mut gens);
+            gens
+        }
+    }
+    fn zero() -> Self {
+        grumpkin::Point::identity()
+    }
+    fn gen() -> Self {
+        grumpkin::Point::generator()
+    }
+    fn to_coordinates(&self) -> (Self::Base,Self::Base,bool){
+        let coordinates = self.affine().coordinates();
+        if coordinates.is_some().unwrap_u8()==1&&(GrumpkinAffine::identity()!=self.affine()){
+            (*coordinates.unwrap().x(), *coordinates.unwrap().y(),false)
+        }else {
+            (Self::Base::zero(),Self::Base::zero(),true)
+        }
+    }
+
+    }
+impl PrimeFieldExt for grumpkin::Scalar {
+    fn from_uniform(bytes: &[u8]) -> Self {
+        let bytes_arr:[u8;
+        64] = bytes.try_into().unwrap();
+        grumpkin::Scalar::from_uniform_bytes(&bytes_arr)
+    }
+
+    }
+impl <G:Group>TranscriptReprTrait<G>for grumpkin::Scalar {
+    fn to_transcript_bytes(&self) -> Vec<u8>{
+        self.to_bytes().into_iter().rev().collect()
+    }
+
+    }
+impl <G:DlogGroup>TranscriptReprTrait<G>for grumpkin::Affine {
+    fn to_transcript_bytes(&self) -> Vec<u8>{
+        let coords = self.coordinates().unwrap();
+        let x_bytes = coords.x().to_bytes().into_iter();
+        let y_bytes = coords.y().to_bytes().into_iter();
+        x_bytes.rev().chain(y_bytes.rev()).collect()
+    }
+
+    }
 
 impl PairingGroup for Bn256Point {
   type G2 = G2;
