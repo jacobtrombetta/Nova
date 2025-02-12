@@ -424,7 +424,9 @@ where
     _eval: &E::Scalar,
   ) -> Result<Self::EvaluationArgument, NovaError> {
 
+    let span = span!(Level::DEBUG, "EvaluationEngine point.to_vec()").entered();
     let x: Vec<E::Scalar> = point.to_vec();
+    span.exit();
 
     //////////////// begin helper closures //////////
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
