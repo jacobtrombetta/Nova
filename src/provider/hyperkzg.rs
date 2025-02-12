@@ -433,6 +433,7 @@ where
     span.exit();
 
     //////////////// begin helper closures //////////
+    let span = span!(Level::DEBUG, "EvaluationEngine define helper closures)").entered();
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
@@ -510,6 +511,7 @@ where
         B
       };
       ///////// END kzg_open_batch closure helpers
+      span.exit();
 
       let k = f.len();
       let t = u.len();
