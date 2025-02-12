@@ -561,7 +561,6 @@ where
     span.exit();
 
     ///// END helper closures //////////
-
     let ell = x.len();
     let n = hat_P.len();
     assert_eq!(n, 1 << ell); // Below we assume that n is a power of two
@@ -569,6 +568,7 @@ where
     // Phase 1  -- create commitments com_1, ..., com_\ell
     // We do not compute final Pi (and its commitment) as it is constant and equals to 'eval'
     // also known to verifier, so can be derived on its side as well
+    let span = span!(Level::DEBUG, "EvaluationEngine polys PI iter").entered();
     let mut polys: Vec<Vec<E::Scalar>> = Vec::new();
     polys.push(hat_P.to_vec());
     for i in 0..ell - 1 {
@@ -582,22 +582,29 @@ where
 
       polys.push(Pi);
     }
+    span.exit();
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
+    let span = span!(Level::DEBUG, "EvaluationEngine Compute commitments in parallel").entered();
     let com: Vec<G1Affine<E>> = (1..polys.len())
       .into_par_iter()
       .map(|i| E::CE::commit(ck, &polys[i], &E::Scalar::ZERO).comm.affine())
       .collect();
+    span.exit();
 
     // Phase 2
     // We do not need to add x to the transcript, because in our context x was obtained from the transcript.
     // We also do not need to absorb `C` and `eval` as they are already absorbed by the transcript by the caller
+    let span = span!(Level::DEBUG, "EvaluationEngine compute_challange").entered();
     let r = Self::compute_challenge(&com, transcript);
     let u = vec![r, -r, r * r];
+    span.exit();
 
     // Phase 3 -- create response
+    let span = span!(Level::DEBUG, "EvaluationEngine kzg_open_batch").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
+    span.exit();
 
     Ok(EvaluationArgument {
       com,
