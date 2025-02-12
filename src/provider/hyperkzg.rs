@@ -25,6 +25,7 @@ use ff::Field;
 use rand_core::OsRng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use tracing::{span, Level};
 
 /// Alias to points on G1 that are in preprocessed form
 type G1Affine<E> = <<E as Engine>::GE as DlogGroup>::AffineGroupElement;
@@ -412,6 +413,7 @@ where
     (pk, vk)
   }
 
+  #[tracing::instrument(name = "EvaluationEngineTrait::prove", level = "debug", skip_all)]
   fn prove(
     ck: &CommitmentKey<E>,
     _pk: &Self::ProverKey,
@@ -421,6 +423,7 @@ where
     point: &[E::Scalar],
     _eval: &E::Scalar,
   ) -> Result<Self::EvaluationArgument, NovaError> {
+
     let x: Vec<E::Scalar> = point.to_vec();
 
     //////////////// begin helper closures //////////
@@ -451,9 +454,14 @@ where
         h
       };
 
+      let span = span!(Level::DEBUG, "EvaluationEngine::compute_witness_polynomial").entered();
       let h = compute_witness_polynomial(f, u);
+      span.exit();
 
-      E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
+      let span = span!(Level::DEBUG, "EvaluationEngine::E::CE::commit").entered();
+      let c = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
+      span.exit();
+      c
     };
 
     let kzg_open_batch = |f: &[Vec<E::Scalar>],
@@ -486,9 +494,12 @@ where
 
         // Compute B(x) = f[0] + q*f[1] + q^2 * f[2] + ... q^(k-1) * f[k-1]
         let mut B = f[0].clone();
+        
+        let span = span!(Level::DEBUG, "EvaluationEngine scalar_vector_muladd").entered();
         for i in 1..k {
           scalar_vector_muladd(&mut B, &f[i], q_powers[i]); // B += q_powers[i] * f[i]
         }
+        span.exit();
 
         B
       };
@@ -497,6 +508,7 @@ where
       let k = f.len();
       let t = u.len();
 
+      let span = span!(Level::DEBUG, "EvaluationEngine compute B(u_j)").entered();
       // The verifier needs f_i(u_j), so we compute them here
       // (V will compute B(u_j) itself)
       let mut v = vec![vec!(E::Scalar::ZERO; k); t];
@@ -508,19 +520,28 @@ where
           *v_ij = poly_eval(f, u[i]);
         });
       });
+      span.exit();
 
+      let span = span!(Level::DEBUG, "EvaluationEngine::get_batch_challenge").entered();
       let q = Self::get_batch_challenge(&v, transcript);
+      span.exit();
+      let span = span!(Level::DEBUG, "EvaluationEngine::kzg_compute_batch_polynomial").entered();
       let B = kzg_compute_batch_polynomial(f, q);
+      span.exit();
 
       // Now open B at u0, ..., u_{t-1}
+      let span = span!(Level::DEBUG, "EvaluationEngine::kzg_open").entered();
       let w = u
         .into_par_iter()
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<G1Affine<E>>>();
+      span.exit();
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
+      let span = span!(Level::DEBUG, "EvaluationEngine::verifier_second_challenge").entered();
       let _d_0 = Self::verifier_second_challenge(&w, transcript);
+      span.exit();
 
       (w, v)
     };
