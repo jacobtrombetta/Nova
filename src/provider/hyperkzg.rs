@@ -429,7 +429,7 @@ where
     span.exit();
 
     //////////////// begin helper closures //////////
-    let span = span!(Level::DEBUG, "EvaluationEngine define helper closures)").entered();
+    let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - kzg_open").entered();
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
@@ -466,7 +466,9 @@ where
       span.exit();
       c
     };
+    span.exit();
 
+    let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - kzg_open_batch").entered();
     let kzg_open_batch = |f: &[Vec<E::Scalar>],
                           u: &[E::Scalar],
                           transcript: &mut <E as Engine>::TE|
@@ -482,14 +484,18 @@ where
 
         v
       };
+      span.exit();
 
+      let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - scalar_vector_muladd").entered();
       let scalar_vector_muladd = |a: &mut Vec<E::Scalar>, v: &Vec<E::Scalar>, s: E::Scalar| {
         assert!(a.len() >= v.len());
         for i in 0..v.len() {
           a[i] += s * v[i];
         }
       };
+      span.exit();
 
+      let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - kzg_compute_batch_polynomial").entered();
       let kzg_compute_batch_polynomial = |f: &[Vec<E::Scalar>], q: E::Scalar| -> Vec<E::Scalar> {
         let k = f.len(); // Number of polynomials we're batching
 
