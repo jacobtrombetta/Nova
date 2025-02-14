@@ -48,6 +48,14 @@ pub trait DlogGroup:
   /// A method to compute a multiexponentation
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self;
 
+  /// A method to compute multiple multiexponentations
+  fn vartime_multiscalar_mul_cpu(
+    scalars: &[Self::Scalar],
+    bases: &[Self::AffineGroupElement],
+  ) -> Self {
+    Self::vartime_multiscalar_mul(&scalars, &bases)
+  }
+
   /// Produce a vector of group elements using a static label
   fn from_label(label: &'static [u8], n: usize) -> Vec<Self::AffineGroupElement>;
 
@@ -113,6 +121,12 @@ macro_rules! impl_traits {
       ) -> Self {
         msm_best(scalars, bases)
       }
+
+      // fn multi_vartime_multiscalar_mul(scalars: &Vec<Vec<Self::Scalar>>, bases: &[Self::AffineGroupElement]) -> Vec<Self> {
+      //   scalars.iter()
+      //     .map(|scalar| msm_best(scalar, bases))
+      //     .collect::<Vec<_>>()
+      // }
 
       fn affine(&self) -> Self::AffineGroupElement {
         self.to_affine()

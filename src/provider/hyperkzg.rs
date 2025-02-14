@@ -283,6 +283,24 @@ where
     }
   }
 
+  fn multi_commit(
+    ck: &Self::CommitmentKey,
+    v: &[Vec<<E as Engine>::Scalar>],
+    r: &<E as Engine>::Scalar,
+  ) -> Vec<Self::Commitment> {
+    let mut comms = Vec::with_capacity(v.len());
+    for vi in v {
+      let mut scalars: Vec<E::Scalar> = vi.to_vec();
+      scalars.push(*r);
+      let mut bases = ck.ck[..vi.len()].to_vec();
+      bases.push(ck.h.clone());
+
+      comms.push(E::GE::vartime_multiscalar_mul_cpu(&scalars, &bases));
+    }
+
+    comms.into_iter().map(|comm| Commitment { comm }).collect()
+  }
+
   fn derandomize(
     dk: &Self::DerandKey,
     commit: &Self::Commitment,
@@ -427,13 +445,9 @@ where
     point: &[E::Scalar],
     _eval: &E::Scalar,
   ) -> Result<Self::EvaluationArgument, NovaError> {
-
-    let span = span!(Level::DEBUG, "EvaluationEngine point.to_vec()").entered();
     let x: Vec<E::Scalar> = point.to_vec();
-    span.exit();
 
     //////////////// begin helper closures //////////
-    let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - kzg_open").entered();
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
@@ -448,8 +462,6 @@ where
       // the quotient of f(x)/(x-u) and (f(x) - f(v))/(x-u) is the
       // same.  One advantage is that computing f(u) could be decoupled
       // from kzg_open, it could be done later or separate from computing W.
-
-      let span = span!(Level::DEBUG, "EvaluationEngine::compute_witness_polynomial definition").entered();
       let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
         let d = f.len();
 
@@ -461,25 +473,16 @@ where
 
         h
       };
-      span.exit();
 
-      let span = span!(Level::DEBUG, "EvaluationEngine::compute_witness_polynomial").entered();
       let h = compute_witness_polynomial(f, u);
-      span.exit();
-
-      let span = span!(Level::DEBUG, "EvaluationEngine::E::CE::commit").entered();
       let c = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
-      span.exit();
       c
     };
-    span.exit();
 
-    let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - kzg_open_batch").entered();
     let kzg_open_batch = |f: &[Vec<E::Scalar>],
                           u: &[E::Scalar],
                           transcript: &mut <E as Engine>::TE|
      -> (Vec<G1Affine<E>>, Vec<Vec<E::Scalar>>) {
-      let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - poly_eval").entered();
       let poly_eval = |f: &[E::Scalar], u: E::Scalar| -> E::Scalar {
         let mut v = f[0];
         let mut u_power = E::Scalar::ONE;
@@ -491,18 +494,14 @@ where
 
         v
       };
-      span.exit();
 
-      let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - scalar_vector_muladd").entered();
       let scalar_vector_muladd = |a: &mut Vec<E::Scalar>, v: &Vec<E::Scalar>, s: E::Scalar| {
         assert!(a.len() >= v.len());
         for i in 0..v.len() {
           a[i] += s * v[i];
         }
       };
-      span.exit();
 
-      let span = span!(Level::DEBUG, "EvaluationEngine define helper closures - kzg_compute_batch_polynomial").entered();
       let kzg_compute_batch_polynomial = |f: &[Vec<E::Scalar>], q: E::Scalar| -> Vec<E::Scalar> {
         let k = f.len(); // Number of polynomials we're batching
 
@@ -510,22 +509,18 @@ where
 
         // Compute B(x) = f[0] + q*f[1] + q^2 * f[2] + ... q^(k-1) * f[k-1]
         let mut B = f[0].clone();
-        
-        let span = span!(Level::DEBUG, "EvaluationEngine scalar_vector_muladd").entered();
+
         for i in 1..k {
           scalar_vector_muladd(&mut B, &f[i], q_powers[i]); // B += q_powers[i] * f[i]
         }
-        span.exit();
 
         B
       };
       ///////// END kzg_open_batch closure helpers
-      span.exit();
 
       let k = f.len();
       let t = u.len();
 
-      let span = span!(Level::DEBUG, "EvaluationEngine compute B(u_j)").entered();
       // The verifier needs f_i(u_j), so we compute them here
       // (V will compute B(u_j) itself)
       let mut v = vec![vec!(E::Scalar::ZERO; k); t];
@@ -537,32 +532,22 @@ where
           *v_ij = poly_eval(f, u[i]);
         });
       });
-      span.exit();
 
-      let span = span!(Level::DEBUG, "EvaluationEngine::get_batch_challenge").entered();
       let q = Self::get_batch_challenge(&v, transcript);
-      span.exit();
-      let span = span!(Level::DEBUG, "EvaluationEngine::kzg_compute_batch_polynomial").entered();
       let B = kzg_compute_batch_polynomial(f, q);
-      span.exit();
 
       // Now open B at u0, ..., u_{t-1}
-      let span = span!(Level::DEBUG, "EvaluationEngine::kzg_open").entered();
       let w = u
         .into_par_iter()
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<G1Affine<E>>>();
-      span.exit();
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
-      let span = span!(Level::DEBUG, "EvaluationEngine::verifier_second_challenge").entered();
       let _d_0 = Self::verifier_second_challenge(&w, transcript);
-      span.exit();
 
       (w, v)
     };
-    span.exit();
 
     ///// END helper closures //////////
     let ell = x.len();
@@ -572,7 +557,6 @@ where
     // Phase 1  -- create commitments com_1, ..., com_\ell
     // We do not compute final Pi (and its commitment) as it is constant and equals to 'eval'
     // also known to verifier, so can be derived on its side as well
-    let span = span!(Level::DEBUG, "EvaluationEngine polys PI iter").entered();
     let mut polys: Vec<Vec<E::Scalar>> = Vec::new();
     polys.push(hat_P.to_vec());
     for i in 0..ell - 1 {
@@ -586,29 +570,29 @@ where
 
       polys.push(Pi);
     }
-    span.exit();
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
-    let span = span!(Level::DEBUG, "EvaluationEngine Compute commitments in parallel").entered();
-    let com: Vec<G1Affine<E>> = (1..polys.len())
+    let span = span!(
+      Level::DEBUG,
+      "EvaluationEngine Compute commitments in parallel"
+    )
+    .entered();
+    let multi_commitments = E::CE::multi_commit(ck, &polys[1..], &E::Scalar::ZERO);
+    let com: Vec<G1Affine<E>> = multi_commitments
       .into_par_iter()
-      .map(|i| E::CE::commit(ck, &polys[i], &E::Scalar::ZERO).comm.affine())
+      .map(|i| i.comm.affine())
       .collect();
     span.exit();
 
     // Phase 2
     // We do not need to add x to the transcript, because in our context x was obtained from the transcript.
     // We also do not need to absorb `C` and `eval` as they are already absorbed by the transcript by the caller
-    let span = span!(Level::DEBUG, "EvaluationEngine compute_challange").entered();
     let r = Self::compute_challenge(&com, transcript);
     let u = vec![r, -r, r * r];
-    span.exit();
 
     // Phase 3 -- create response
-    let span = span!(Level::DEBUG, "EvaluationEngine kzg_open_batch").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
-    span.exit();
 
     Ok(EvaluationArgument {
       com,
