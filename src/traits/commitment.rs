@@ -62,6 +62,15 @@ pub trait CommitmentEngineTrait<E: Engine>: Clone + Send + Sync {
   /// Commits to the provided vector using the provided generators and random blind
   fn commit(ck: &Self::CommitmentKey, v: &[E::Scalar], r: &E::Scalar) -> Self::Commitment;
 
+  /// Multi commits to the provided vectors using the provided generators and random blind
+  fn multi_commit(
+    ck: &Self::CommitmentKey,
+    v: &[Vec<E::Scalar>],
+    r: &E::Scalar,
+  ) -> Vec<Self::Commitment> {
+    v.iter().map(|v_i| Self::commit(ck, &v_i, &r)).collect()
+  }
+
   /// Remove given blind from commitment
   fn derandomize(
     dk: &Self::DerandKey,
