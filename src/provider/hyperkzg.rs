@@ -284,17 +284,15 @@ where
     v: &[Vec<<E as Engine>::Scalar>],
     r: &<E as Engine>::Scalar,
   ) -> Vec<Self::Commitment> {
-    let mut comms = Vec::with_capacity(v.len());
-    for vi in v {
-      let mut scalars: Vec<E::Scalar> = vi.to_vec();
-      scalars.push(*r);
-      let mut bases = ck.ck[..vi.len()].to_vec();
-      bases.push(ck.h.clone());
+    let max = v.iter().map(|v| v.len()).max().unwrap();
+    assert!(ck.ck.len() >= max);
 
-      comms.push(E::GE::vartime_multiscalar_mul_cpu(&scalars, &bases));
-    }
-
-    comms.into_iter().map(|comm| Commitment { comm }).collect()
+    E::GE::multi_vartime_multiscalar_mul(v, &ck.ck[..max])
+      .into_iter()
+      .map(|commit| Commitment {
+        comm: commit + <E::GE as DlogGroup>::group(&ck.h) * r,
+      })
+      .collect()
   }
 
   fn derandomize(
@@ -471,8 +469,8 @@ where
       };
 
       let h = compute_witness_polynomial(f, u);
-      let c = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
-      c
+
+      E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
     };
 
     let kzg_open_batch = |f: &[Vec<E::Scalar>],
@@ -569,13 +567,8 @@ where
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
-    let span = span!(
-      Level::DEBUG,
-      "EvaluationEngine Compute commitments in parallel"
-    )
-    .entered();
-    let multi_commitments = E::CE::multi_commit(ck, &polys[1..], &E::Scalar::ZERO);
-    let com: Vec<G1Affine<E>> = multi_commitments
+    let span = span!(Level::DEBUG, "EvaluationEngine Compute multi commitments").entered();
+    let com: Vec<G1Affine<E>> = E::CE::multi_commit(ck, &polys[1..], &E::Scalar::ZERO)
       .into_par_iter()
       .map(|i| i.comm.affine())
       .collect();

@@ -49,11 +49,16 @@ pub trait DlogGroup:
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self;
 
   /// A method to compute multiple multiexponentations
-  fn vartime_multiscalar_mul_cpu(
-    scalars: &[Self::Scalar],
+  fn multi_vartime_multiscalar_mul(
+    scalars: &[Vec<Self::Scalar>],
     bases: &[Self::AffineGroupElement],
-  ) -> Self {
-    Self::vartime_multiscalar_mul(&scalars, &bases)
+  ) -> Vec<Self> {
+    scalars
+      .iter()
+      .map(|scalar| {
+        Self::vartime_multiscalar_mul(scalar, bases[..scalar.len()].to_vec().as_slice())
+      })
+      .collect::<Vec<_>>()
   }
 
   /// Produce a vector of group elements using a static label

@@ -68,7 +68,7 @@ pub trait CommitmentEngineTrait<E: Engine>: Clone + Send + Sync {
     v: &[Vec<E::Scalar>],
     r: &E::Scalar,
   ) -> Vec<Self::Commitment> {
-    v.iter().map(|v_i| Self::commit(ck, &v_i, &r)).collect()
+    v.iter().map(|v_i| Self::commit(ck, v_i, r)).collect()
   }
 
   /// Remove given blind from commitment

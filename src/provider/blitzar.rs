@@ -14,6 +14,19 @@ pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
   blitzar_commitments[0]
 }
 
+/// A trait that provides the ability to perform multi multi-scalar multiplication in variable time
+pub fn multi_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) -> Vec<Point> {
+  let mut blitzar_commitments = vec![Point::default(); scalars.len()];
+
+  blitzar::compute::compute_bn254_g1_uncompressed_commitments_with_halo2_generators(
+    &mut blitzar_commitments,
+    &scalars.iter().map(|v| v[..].into()).collect::<Vec<_>>(),
+    bases,
+  );
+
+  blitzar_commitments
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
