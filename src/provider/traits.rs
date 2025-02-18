@@ -127,12 +127,6 @@ macro_rules! impl_traits {
         msm_best(scalars, bases)
       }
 
-      // fn multi_vartime_multiscalar_mul(scalars: &Vec<Vec<Self::Scalar>>, bases: &[Self::AffineGroupElement]) -> Vec<Self> {
-      //   scalars.iter()
-      //     .map(|scalar| msm_best(scalar, bases))
-      //     .collect::<Vec<_>>()
-      // }
-
       fn affine(&self) -> Self::AffineGroupElement {
         self.to_affine()
       }
