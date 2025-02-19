@@ -284,13 +284,16 @@ where
     v: &[Vec<<E as Engine>::Scalar>],
     r: &<E as Engine>::Scalar,
   ) -> Vec<Self::Commitment> {
-    let max = v.iter().map(|v| v.len()).max().unwrap();
+    let max = v.iter().map(|v| v.len()).max().unwrap_or(0);
     assert!(ck.ck.len() >= max);
 
-    E::GE::multi_vartime_multiscalar_mul(v, &ck.ck[..max])
+    let commitments = E::GE::multi_vartime_multiscalar_mul(v, &ck.ck[..max]);
+    let binding_factor = <E::GE as DlogGroup>::group(&ck.h) * r;
+
+    commitments
       .into_iter()
       .map(|commit| Commitment {
-        comm: commit + <E::GE as DlogGroup>::group(&ck.h) * r,
+        comm: commit + binding_factor,
       })
       .collect()
   }
