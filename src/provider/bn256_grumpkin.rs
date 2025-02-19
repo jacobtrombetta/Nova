@@ -63,11 +63,11 @@ impl DlogGroup for bn256::Point {
 
   #[cfg(not(feature = "blitzar"))]
   #[tracing::instrument(
-    name = "bn256::multi_vartime_multiscalar_mul (cpu)",
+    name = "bn256::batch_vartime_multiscalar_mul (cpu)",
     level = "debug",
     skip_all
   )]
-  fn multi_vartime_multiscalar_mul(
+  fn batch_vartime_multiscalar_mul(
     scalars: &[Vec<Self::Scalar>],
     bases: &[Self::AffineGroupElement],
   ) -> Vec<Self> {
@@ -88,15 +88,15 @@ impl DlogGroup for bn256::Point {
   }
   #[cfg(feature = "blitzar")]
   #[tracing::instrument(
-    name = "bn256::multi_vartime_multiscalar_mul (gpu)",
+    name = "bn256::batch_vartime_multiscalar_mul (gpu)",
     level = "debug",
     skip_all
   )]
-  fn multi_vartime_multiscalar_mul(
+  fn batch_vartime_multiscalar_mul(
     scalars: &[Vec<Self::Scalar>],
     bases: &[Self::AffineGroupElement],
   ) -> Vec<Self> {
-    super::blitzar::multi_vartime_multiscalar_mul(scalars, bases)
+    super::blitzar::batch_vartime_multiscalar_mul(scalars, bases)
   }
 
   fn affine(&self) -> Self::AffineGroupElement {

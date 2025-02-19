@@ -279,7 +279,7 @@ where
     }
   }
 
-  fn multi_commit(
+  fn batch_commit(
     ck: &Self::CommitmentKey,
     v: &[Vec<<E as Engine>::Scalar>],
     r: &<E as Engine>::Scalar,
@@ -287,13 +287,12 @@ where
     let max = v.iter().map(|v| v.len()).max().unwrap_or(0);
     assert!(ck.ck.len() >= max);
 
-    let commitments = E::GE::multi_vartime_multiscalar_mul(v, &ck.ck[..max]);
-    let binding_factor = <E::GE as DlogGroup>::group(&ck.h) * r;
+    let blinding_factor = <E::GE as DlogGroup>::group(&ck.h) * r;
 
-    commitments
-      .into_iter()
+    E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
+      .iter()
       .map(|commit| Commitment {
-        comm: commit + binding_factor,
+        comm: *commit + blinding_factor,
       })
       .collect()
   }
@@ -571,7 +570,7 @@ where
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
     let span = span!(Level::DEBUG, "EvaluationEngine Compute multi commitments").entered();
-    let com: Vec<G1Affine<E>> = E::CE::multi_commit(ck, &polys[1..], &E::Scalar::ZERO)
+    let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], &E::Scalar::ZERO)
       .into_par_iter()
       .map(|i| i.comm.affine())
       .collect();
