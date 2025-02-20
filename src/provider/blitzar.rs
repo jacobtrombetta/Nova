@@ -26,7 +26,7 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
     .map(|s| s.iter().map(|v| v.to_bytes()).collect())
     .collect();
   let scalars_table: Vec<blitzar::sequence::Sequence<'_>> =
-    scalar_bytes.iter().map(|s| (&*s).into()).collect();
+    scalar_bytes.iter().map(|s| s.into()).collect();
 
   blitzar::compute::compute_bn254_g1_uncompressed_commitments_with_halo2_generators(
     &mut blitzar_commitments,
