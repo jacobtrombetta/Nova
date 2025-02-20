@@ -1,3 +1,4 @@
+//! This module implements variable time multi-scalar multiplication using Blitzar's GPU acceleration
 use blitzar;
 use halo2curves::bn256::{Fr as Scalar, G1Affine as Affine, G1 as Point};
 
