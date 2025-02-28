@@ -270,6 +270,7 @@ where
     Self::DerandKey { h: ck.h.clone() }
   }
 
+  #[tracing::instrument(level = "debug",skip_all)]
   fn commit(ck: &Self::CommitmentKey, v: &[E::Scalar], r: &E::Scalar) -> Self::Commitment {
     assert!(ck.ck.len() >= v.len());
 
@@ -463,6 +464,7 @@ where
       // the quotient of f(x)/(x-u) and (f(x) - f(v))/(x-u) is the
       // same.  One advantage is that computing f(u) could be decoupled
       // from kzg_open, it could be done later or separate from computing W.
+      let span = span!(Level::DEBUG, "kzg_open compute_witness_polynomial").entered();
       let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
         let d = f.len();
 
@@ -474,8 +476,9 @@ where
 
         h
       };
-
+      
       let h = compute_witness_polynomial(f, u);
+      span.exit();
 
       let span = span!(Level::DEBUG, "kzg_open commit").entered();
       let commit = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
