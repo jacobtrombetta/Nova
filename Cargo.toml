@@ -29,7 +29,7 @@ opentelemetry-jaeger = { version = "0.20.0" }
 serde = { version = "1.0.217", features = ["derive"] }
 bincode = "1.3"
 bitvec = "1.0"
-blitzar = { git = "https://github.com/spaceandtimelabs/blitzar-rs.git", branch = "feat/support-halo2-bn256-commitments", optional = true }
+blitzar = "4.4.0"
 byteorder = "1.4.3"
 thiserror = "2.0.11"
 once_cell = "1.18.0"
