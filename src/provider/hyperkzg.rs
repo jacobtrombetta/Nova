@@ -270,7 +270,7 @@ where
     Self::DerandKey { h: ck.h.clone() }
   }
 
-  #[tracing::instrument(level = "debug",skip_all)]
+  #[tracing::instrument(level = "debug", skip_all)]
   fn commit(ck: &Self::CommitmentKey, v: &[E::Scalar], r: &E::Scalar) -> Self::Commitment {
     assert!(ck.ck.len() >= v.len());
 
@@ -279,7 +279,6 @@ where
         + <E::GE as DlogGroup>::group(&ck.h) * r,
     }
   }
-
 
   fn batch_commit(
     ck: &Self::CommitmentKey,
@@ -412,6 +411,49 @@ where
   }
 }
 
+#[tracing::instrument(level = "debug", skip_all)]
+fn kzg_open<E: Engine>(ck: &CommitmentKey<E>, f: &[E::Scalar], u: E::Scalar) -> G1Affine<E>
+where
+  E::GE: PairingGroup,
+{
+  // On input f(x) and u compute the witness polynomial used to prove
+  // that f(u) = v. The main part of this is to compute the
+  // division (f(x) - f(u)) / (x - u), but we don't use a general
+  // division algorithm, we make use of the fact that the division
+  // never has a remainder, and that the denominator is always a linear
+  // polynomial. The cost is (d-1) mults + (d-1) adds in E::Scalar, where
+  // d is the degree of f.
+  //
+  // We use the fact that if we compute the quotient of f(x)/(x-u),
+  // there will be a remainder, but it'll be v = f(u).  Put another way
+  // the quotient of f(x)/(x-u) and (f(x) - f(v))/(x-u) is the
+  // same.  One advantage is that computing f(u) could be decoupled
+  // from kzg_open, it could be done later or separate from computing W.
+  let span = span!(Level::DEBUG, "kzg_open compute_witness_polynomial").entered();
+  let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
+    let d = f.len();
+
+    // Compute h(x) = f(x)/(x - u)
+    let mut h = vec![E::Scalar::ZERO; d];
+    for i in (1..d).rev() {
+      h[i - 1] = f[i] + h[i] * u;
+    }
+
+    h
+  };
+
+  let h = compute_witness_polynomial(f, u);
+  span.exit();
+
+  let span = span!(Level::DEBUG, "kzg_open commit").entered();
+  let commit = CommitmentEngine::commit(ck, &h, &E::Scalar::ZERO)
+    .comm
+    .affine();
+  span.exit();
+
+  commit
+}
+
 impl<E> EvaluationEngineTrait<E> for EvaluationEngine<E>
 where
   E: Engine<CE = CommitmentEngine<E>>,
@@ -450,6 +492,7 @@ where
     let x: Vec<E::Scalar> = point.to_vec();
 
     //////////////// begin helper closures //////////
+    /*
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
@@ -476,7 +519,7 @@ where
 
         h
       };
-      
+
       let h = compute_witness_polynomial(f, u);
       span.exit();
 
@@ -486,6 +529,7 @@ where
 
       commit
     };
+     */
 
     let kzg_open_batch = |f: &[Vec<E::Scalar>],
                           u: &[E::Scalar],
@@ -556,7 +600,7 @@ where
       // Now open B at u0, ..., u_{t-1}
       let w = u
         .into_par_iter()
-        .map(|ui| kzg_open(&B, *ui))
+        .map(|ui| kzg_open::<E>(ck, &B, *ui))
         .collect::<Vec<G1Affine<E>>>();
       span.exit();
 
