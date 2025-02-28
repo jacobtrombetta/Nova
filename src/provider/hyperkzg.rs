@@ -412,6 +412,22 @@ where
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
+fn compute_witness_polynomial<E: Engine>(f: &[E::Scalar], u: E::Scalar) -> Vec<E::Scalar>
+where
+    E::GE: PairingGroup,
+{
+    let d = f.len();
+
+    // Compute h(x) = f(x)/(x - u)
+    let mut h = vec![E::Scalar::ZERO; d];
+    for i in (1..d).rev() {
+        h[i - 1] = f[i] + h[i] * u;
+    }
+
+    h
+}
+
+#[tracing::instrument(level = "debug", skip_all)]
 fn kzg_open<E: Engine>(ck: &CommitmentKey<E>, f: &[E::Scalar], u: E::Scalar) -> G1Affine<E>
 where
   E::GE: PairingGroup,
@@ -429,21 +445,7 @@ where
   // the quotient of f(x)/(x-u) and (f(x) - f(v))/(x-u) is the
   // same.  One advantage is that computing f(u) could be decoupled
   // from kzg_open, it could be done later or separate from computing W.
-  let span = span!(Level::DEBUG, "kzg_open compute_witness_polynomial").entered();
-  let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
-    let d = f.len();
-
-    // Compute h(x) = f(x)/(x - u)
-    let mut h = vec![E::Scalar::ZERO; d];
-    for i in (1..d).rev() {
-      h[i - 1] = f[i] + h[i] * u;
-    }
-
-    h
-  };
-
-  let h = compute_witness_polynomial(f, u);
-  span.exit();
+  let h = compute_witness_polynomial::<E>(f, u);
 
   let span = span!(Level::DEBUG, "kzg_open commit").entered();
   let commit = CommitmentEngine::commit(ck, &h, &E::Scalar::ZERO)
