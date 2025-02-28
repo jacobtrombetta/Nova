@@ -25,6 +25,7 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
     .iter()
     .map(|s| s.iter().map(|v| v.to_bytes()).collect())
     .collect();
+
   let scalars_table: Vec<blitzar::sequence::Sequence<'_>> =
     scalar_bytes.iter().map(|s| s.into()).collect();
 
