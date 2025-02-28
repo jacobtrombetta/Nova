@@ -279,6 +279,7 @@ where
     }
   }
 
+
   fn batch_commit(
     ck: &Self::CommitmentKey,
     v: &[Vec<<E as Engine>::Scalar>],
@@ -289,12 +290,16 @@ where
 
     let blinding_factor = <E::GE as DlogGroup>::group(&ck.h) * r;
 
-    E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
+    let span = span!(Level::DEBUG, "E::GE::batch_vartime_multiscalar_mul").entered();
+    let commits = E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
       .iter()
       .map(|commit| Commitment {
         comm: *commit + blinding_factor,
       })
-      .collect()
+      .collect();
+    span.exit();
+
+    commits
   }
 
   fn derandomize(
@@ -472,13 +477,18 @@ where
 
       let h = compute_witness_polynomial(f, u);
 
-      E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
+      let span = span!(Level::DEBUG, "kzg_open commit").entered();
+      let commit = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
+      span.exit();
+
+      commit
     };
 
     let kzg_open_batch = |f: &[Vec<E::Scalar>],
                           u: &[E::Scalar],
                           transcript: &mut <E as Engine>::TE|
      -> (Vec<G1Affine<E>>, Vec<Vec<E::Scalar>>) {
+      let span = span!(Level::DEBUG, "kzg_open_batch create closures").entered();
       let poly_eval = |f: &[E::Scalar], u: E::Scalar| -> E::Scalar {
         let mut v = f[0];
         let mut u_power = E::Scalar::ONE;
@@ -512,6 +522,7 @@ where
 
         B
       };
+      span.exit();
       ///////// END kzg_open_batch closure helpers
 
       let k = f.len();
@@ -532,11 +543,13 @@ where
       let q = Self::get_batch_challenge(&v, transcript);
       let B = kzg_compute_batch_polynomial(f, q);
 
+      let span = span!(Level::DEBUG, "kzg_batch kzg_open").entered();
       // Now open B at u0, ..., u_{t-1}
       let w = u
         .into_par_iter()
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<G1Affine<E>>>();
+      span.exit();
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
@@ -569,7 +582,7 @@ where
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
-    let span = span!(Level::DEBUG, "EvaluationEngine Compute multi commitments").entered();
+    let span = span!(Level::DEBUG, "EvaluationEngine batch_commit into affine").entered();
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], &E::Scalar::ZERO)
       .into_par_iter()
       .map(|i| i.comm.affine())
@@ -579,11 +592,15 @@ where
     // Phase 2
     // We do not need to add x to the transcript, because in our context x was obtained from the transcript.
     // We also do not need to absorb `C` and `eval` as they are already absorbed by the transcript by the caller
+    let span = span!(Level::DEBUG, "EvaluationEngine compute_challange").entered();
     let r = Self::compute_challenge(&com, transcript);
     let u = vec![r, -r, r * r];
+    span.exit();
 
     // Phase 3 -- create response
+    let span = span!(Level::DEBUG, "EvaluationEngine kzg_open_batch").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
+    span.exit();
 
     Ok(EvaluationArgument {
       com,
