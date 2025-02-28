@@ -533,6 +533,7 @@ where
 
       // The verifier needs f_i(u_j), so we compute them here
       // (V will compute B(u_j) itself)
+      let span = span!(Level::DEBUG, "kzg_batch poly_eval").entered();
       let mut v = vec![vec!(E::Scalar::ZERO; k); t];
       v.par_iter_mut().enumerate().for_each(|(i, v_i)| {
         // for each point u
@@ -542,9 +543,14 @@ where
           *v_ij = poly_eval(f, u[i]);
         });
       });
+      span.exit();
 
+      let span = span!(Level::DEBUG, "kzg_batch get_batch_challenge").entered();
       let q = Self::get_batch_challenge(&v, transcript);
+      span.exit();
+      let span = span!(Level::DEBUG, "kzg_batch kzg_compute_batch_polynomial").entered();
       let B = kzg_compute_batch_polynomial(f, q);
+      span.exit();
 
       let span = span!(Level::DEBUG, "kzg_batch kzg_open").entered();
       // Now open B at u0, ..., u_{t-1}
@@ -556,7 +562,9 @@ where
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
+      let span = span!(Level::DEBUG, "kzg_batch verifier_second_challange").entered();
       let _d_0 = Self::verifier_second_challenge(&w, transcript);
+      span.exit();
 
       (w, v)
     };
