@@ -6,7 +6,9 @@ use halo2curves::bn256::{Fr as Scalar, G1Affine as Affine, G1 as Point};
 pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
   let mut blitzar_commitments = vec![Point::default(); 1];
 
+  let span = span!(Level::DEBUG, "scalars to bytes").entered();
   let scalar_bytes: Vec<[u8; 32]> = scalars.iter().map(|s| s.to_bytes()).collect();
+  span.exit();
 
   blitzar::compute::compute_bn254_g1_uncompressed_commitments_with_halo2_generators(
     &mut blitzar_commitments,
@@ -21,13 +23,17 @@ pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
 pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) -> Vec<Point> {
   let mut blitzar_commitments = vec![Point::default(); scalars.len()];
 
+  let span = span!(Level::DEBUG, "scalars to bytes").entered();
   let scalar_bytes: Vec<Vec<[u8; 32]>> = scalars
     .iter()
     .map(|s| s.iter().map(|v| v.to_bytes()).collect())
     .collect();
+  span.exit();
 
+  let span = span!(Level::DEBUG, "scalar bytes to sequence").entered();
   let scalars_table: Vec<blitzar::sequence::Sequence<'_>> =
     scalar_bytes.iter().map(|s| s.into()).collect();
+  span.exit();
 
   blitzar::compute::compute_bn254_g1_uncompressed_commitments_with_halo2_generators(
     &mut blitzar_commitments,
