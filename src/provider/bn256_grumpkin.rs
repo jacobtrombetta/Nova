@@ -51,8 +51,20 @@ impl Group for bn256::Point {
 }
 impl DlogGroup for bn256::Point {
   type AffineGroupElement = bn256::Affine;
+  #[cfg(not(feature = "blitzar"))]
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self {
     msm_best(scalars, bases)
+  }
+  #[cfg(feature = "blitzar")]
+  fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self {
+    super::blitzar::vartime_multiscalar_mul(scalars, bases)
+  }
+  #[cfg(feature = "blitzar")]
+  fn batch_vartime_multiscalar_mul(
+    scalars: &[Vec<Self::Scalar>],
+    bases: &[Self::AffineGroupElement],
+  ) -> Vec<Self> {
+    super::blitzar::batch_vartime_multiscalar_mul(scalars, bases)
   }
   fn affine(&self) -> Self::AffineGroupElement {
     self.to_affine()
