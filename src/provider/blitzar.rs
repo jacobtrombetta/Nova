@@ -1,7 +1,7 @@
 //! This module implements variable time multi-scalar multiplication using Blitzar's GPU acceleration
 use blitzar;
 use halo2curves::bn256::{Fr as Scalar, G1Affine as Affine, G1 as Point};
-use tracing::{Level, span};
+use tracing::{span, Level};
 
 /// A trait that provides the ability to perform multi-scalar multiplication in variable time
 pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {

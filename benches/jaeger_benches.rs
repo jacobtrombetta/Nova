@@ -1,16 +1,116 @@
-// Derived from test_hyperkzg_large in the hyperkzg module
+//! Derived from test_hyperkzg_large in the hyperkzg module
+//! ```bash
+//! docker run --rm -d --name jaeger -p 6831:6831/udp -p 16686:16686 jaegertracing/all-in-one:1.62.0
+//! cargo bench --bench jaeger_benches
+//! ```
+//! Then, navigate to <http://localhost:16686> to view the traces.
 #[cfg(feature = "blitzar")]
 use blitzar::compute::init_backend;
+use core::marker::PhantomData;
+use ff::PrimeField;
 use nova_snark::{
-  provider::{hyperkzg::EvaluationArgument, keccak::Keccak256Transcript, Bn256EngineKZG},
-  spartan::polys::multilinear::MultilinearPolynomial, traits::{evaluation::EvaluationEngineTrait, TranscriptEngineTrait},
+  frontend::{num::AllocatedNum, ConstraintSystem, SynthesisError},
+  nova::{CompressedSNARK, PublicParams, RecursiveSNARK},
+  provider::{Bn256EngineKZG, GrumpkinEngine},
+  traits::{
+    circuit::{StepCircuit, TrivialCircuit},
+    snark::RelaxedR1CSSNARKTrait,
+    Engine,
+  },
 };
-use ff::Field;
-use halo2curves::bn256::Fr;
-use nova_snark::{provider::hyperkzg::{CommitmentEngine, CommitmentKey, EvaluationEngine}, traits::commitment::CommitmentEngineTrait};
-use rand::SeedableRng;
 
-type E = Bn256EngineKZG;
+#[derive(Clone, Debug, Default)]
+struct NonTrivialCircuit<F: PrimeField> {
+  num_cons: usize,
+  _p: PhantomData<F>,
+}
+
+impl<F: PrimeField> NonTrivialCircuit<F> {
+  pub fn new(num_cons: usize) -> Self {
+    Self {
+      num_cons,
+      _p: PhantomData,
+    }
+  }
+}
+impl<F: PrimeField> StepCircuit<F> for NonTrivialCircuit<F> {
+  fn arity(&self) -> usize {
+    1
+  }
+
+  fn synthesize<CS: ConstraintSystem<F>>(
+    &self,
+    cs: &mut CS,
+    z: &[AllocatedNum<F>],
+  ) -> Result<Vec<AllocatedNum<F>>, SynthesisError> {
+    // Consider an equation: `x^2 = y`, where `x` and `y` are respectively the input and output.
+    let mut x = z[0].clone();
+    let mut y = x.clone();
+    for i in 0..self.num_cons {
+      y = x.square(cs.namespace(|| format!("x_sq_{i}")))?;
+      x = y.clone();
+    }
+    Ok(vec![y])
+  }
+}
+
+type E1 = Bn256EngineKZG;
+type E2 = GrumpkinEngine;
+type EE1 = nova_snark::provider::hyperkzg::EvaluationEngine<E1>;
+type EE2 = nova_snark::provider::ipa_pc::EvaluationEngine<E2>;
+type C1 = NonTrivialCircuit<<E1 as Engine>::Scalar>;
+type C2 = TrivialCircuit<<E2 as Engine>::Scalar>;
+type S1 = nova_snark::spartan::snark::RelaxedR1CSSNARK<E1, EE1>;
+type S2 = nova_snark::spartan::snark::RelaxedR1CSSNARK<E2, EE2>;
+
+fn bench_compressed_snark_internal<S1: RelaxedR1CSSNARKTrait<E1>, S2: RelaxedR1CSSNARKTrait<E2>>(
+  num_cons: usize,
+) {
+  let c_primary = NonTrivialCircuit::new(num_cons);
+  let c_secondary = TrivialCircuit::default();
+
+  // Produce public parameters
+  let pp = PublicParams::<E1, E2, C1, C2>::setup(
+    &c_primary,
+    &c_secondary,
+    &*S1::ck_floor(),
+    &*S2::ck_floor(),
+  )
+  .unwrap();
+
+  // Produce prover and verifier keys for CompressedSNARK
+  let (pk, vk) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp).unwrap();
+
+  // produce a recursive SNARK
+  let num_steps = 3;
+  let mut recursive_snark: RecursiveSNARK<E1, E2, C1, C2> = RecursiveSNARK::new(
+    &pp,
+    &c_primary,
+    &c_secondary,
+    &[<E1 as Engine>::Scalar::from(2u64)],
+    &[<E2 as Engine>::Scalar::from(2u64)],
+  )
+  .unwrap();
+
+  for i in 0..num_steps {
+    let res = recursive_snark.prove_step(&pp, &c_primary, &c_secondary);
+    assert!(res.is_ok());
+
+    // verify the recursive snark at each step of recursion
+    let res = recursive_snark.verify(
+      &pp,
+      i + 1,
+      &[<E1 as Engine>::Scalar::from(2u64)],
+      &[<E2 as Engine>::Scalar::from(2u64)],
+    );
+    assert!(res.is_ok());
+  }
+
+  // Bench time to produce a compressed SNARK
+  for _ in 0..3 {
+    let _ = CompressedSNARK::<_, _, _, _, S1, S2>::prove(&pp, &pk, &recursive_snark).is_ok();
+  }
+}
 
 fn main() {
   #[cfg(feature = "blitzar")]
@@ -19,46 +119,19 @@ fn main() {
   use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
   let tracer = opentelemetry_jaeger::new_agent_pipeline()
-      .with_service_name("benches")
-      .install_simple()
-      .unwrap();
+    .with_service_name("benches")
+    .install_simple()
+    .unwrap();
 
   let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
   let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("DEBUG"));
 
   tracing_subscriber::registry()
-      .with(opentelemetry)
-      .with(filter)
-      .try_init()
-      .unwrap();
+    .with(opentelemetry)
+    .with(filter)
+    .try_init()
+    .unwrap();
 
-  // test the hyperkzg prover and verifier with random instances (derived from a seed)
-  for _ in 0..3 {
-    let ell = 20;
-
-    let mut rng = rand::rngs::StdRng::seed_from_u64(ell as u64);
-
-    let n = 1 << ell; // n = 2^ell
-
-    let poly = (0..n).map(|_| Fr::random(&mut rng)).collect::<Vec<_>>();
-    let point = (0..ell).map(|_| Fr::random(&mut rng)).collect::<Vec<_>>();
-    let eval = MultilinearPolynomial::evaluate_with(&poly, &point);
-
-    let ck: CommitmentKey<E> = CommitmentEngine::setup(b"test", n);
-    let (pk, vk) = EvaluationEngine::setup(&ck);
-
-    // make a commitment
-    let c = CommitmentEngine::commit(&ck, &poly, &Fr::ZERO);
-
-    // prove an evaluation
-    let mut prover_transcript = Keccak256Transcript::new(b"TestEval");
-    let proof: EvaluationArgument<E> =
-        EvaluationEngine::prove(&ck, &pk, &mut prover_transcript, &c, &poly, &point, &eval)
-            .unwrap();
-
-    // verify the evaluation
-    let mut verifier_tr = Keccak256Transcript::new(b"TestEval");
-    assert!(EvaluationEngine::verify(&vk, &mut verifier_tr, &c, &point, &eval, &proof).is_ok());
-}
+  bench_compressed_snark_internal::<S1, S2>(1 << 20);
 }

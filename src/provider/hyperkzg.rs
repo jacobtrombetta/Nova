@@ -414,17 +414,17 @@ where
 #[tracing::instrument(level = "debug", skip_all)]
 fn compute_witness_polynomial<E: Engine>(f: &[E::Scalar], u: E::Scalar) -> Vec<E::Scalar>
 where
-    E::GE: PairingGroup,
+  E::GE: PairingGroup,
 {
-    let d = f.len();
+  let d = f.len();
 
-    // Compute h(x) = f(x)/(x - u)
-    let mut h = vec![E::Scalar::ZERO; d];
-    for i in (1..d).rev() {
-        h[i - 1] = f[i] + h[i] * u;
-    }
+  // Compute h(x) = f(x)/(x - u)
+  let mut h = vec![E::Scalar::ZERO; d];
+  for i in (1..d).rev() {
+    h[i - 1] = f[i] + h[i] * u;
+  }
 
-    h
+  h
 }
 
 #[tracing::instrument(level = "debug", skip_all)]
