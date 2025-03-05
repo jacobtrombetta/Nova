@@ -60,23 +60,6 @@ impl DlogGroup for bn256::Point {
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self {
     msm_best(scalars, bases)
   }
-
-  #[cfg(not(feature = "blitzar"))]
-  #[tracing::instrument(
-    name = "bn256::batch_vartime_multiscalar_mul (cpu)",
-    level = "debug",
-    skip_all
-  )]
-  fn batch_vartime_multiscalar_mul(
-    scalars: &[Vec<Self::Scalar>],
-    bases: &[Self::AffineGroupElement],
-  ) -> Vec<Self> {
-    scalars
-      .into_par_iter()
-      .map(|scalar| msm_best(scalar, &bases[..scalar.len()]))
-      .collect()
-  }
-
   #[cfg(feature = "blitzar")]
   #[tracing::instrument(
     name = "bn256::vartime_multiscalar_mul (gpu)",
