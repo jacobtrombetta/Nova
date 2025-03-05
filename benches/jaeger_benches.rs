@@ -1,3 +1,4 @@
+// Derived from test_hyperkzg_large in the hyperkzg module
 #[cfg(feature = "blitzar")]
 use blitzar::compute::init_backend;
 use nova_snark::{
