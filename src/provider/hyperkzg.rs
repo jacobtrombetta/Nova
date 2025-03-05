@@ -667,6 +667,7 @@ where
   }
 
   /// A method to verify purported evaluations of a batch of polynomials
+  #[tracing::instrument(name = "EvaluationEngineTrait::verify", level = "debug", skip_all)]
   fn verify(
     vk: &Self::VerifierKey,
     transcript: &mut <E as Engine>::TE,

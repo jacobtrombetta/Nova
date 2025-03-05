@@ -12,7 +12,7 @@ pub mod snark;
 #[macro_use]
 mod macros;
 pub(crate) mod math;
-pub(crate) mod polys;
+pub mod polys;
 mod sumcheck;
 
 use crate::{

@@ -2,5 +2,5 @@
 pub(crate) mod eq;
 pub(crate) mod identity;
 pub(crate) mod masked_eq;
-pub(crate) mod multilinear;
+pub mod multilinear;
 pub(crate) mod univariate;

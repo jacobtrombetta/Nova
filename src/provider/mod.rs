@@ -11,7 +11,7 @@ pub mod secp_secq;
 // crate-private modules
 #[cfg(feature = "blitzar")]
 pub(crate) mod blitzar;
-pub(crate) mod keccak;
+pub mod keccak;
 pub(crate) mod pedersen;
 pub(crate) mod traits;
 

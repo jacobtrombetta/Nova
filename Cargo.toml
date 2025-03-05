@@ -73,6 +73,10 @@ harness = false
 name = "ppsnark"
 harness = false
 
+[[bench]]
+name = "jaeger_benches"
+harness = false
+
 [features]
 default = ["halo2curves/asm"]
 flamegraph = ["pprof2/flamegraph", "pprof2/criterion"]
