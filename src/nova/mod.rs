@@ -359,6 +359,7 @@ where
 
   /// Create a new `RecursiveSNARK` (or updates the provided `RecursiveSNARK`)
   /// by executing a step of the incremental computation
+  #[tracing::instrument(level = "debug", skip_all)]
   pub fn prove_step(
     &mut self,
     pp: &PublicParams<E1, E2, C1, C2>,
@@ -713,6 +714,7 @@ where
   }
 
   /// Create a new `CompressedSNARK` (provides zero-knowledge)
+  #[tracing::instrument(level = "debug",skip_all)]
   pub fn prove(
     pp: &PublicParams<E1, E2, C1, C2>,
     pk: &ProverKey<E1, E2, C1, C2, S1, S2>,

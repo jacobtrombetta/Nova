@@ -60,6 +60,10 @@ pub struct NovaAugmentedCircuitInputs<E: Engine> {
 
 impl<E: Engine> NovaAugmentedCircuitInputs<E> {
   /// Create new inputs/witness for the verification circuit
+  #[tracing::instrument(
+    name = "NovaAugmentedCircuitInputs::new",
+    level = "debug", 
+    skip_all)]
   pub fn new(
     params: E::Scalar,
     i: E::Base,

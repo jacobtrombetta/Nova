@@ -36,6 +36,10 @@ impl<E: Engine> NIFS<E> {
   /// In particular, it requires that `U1` and `U2` are such that the hash of `U1` is stored in the public IO of `U2`.
   /// In this particular setting, this means that if `U2` is absorbed in the RO, it implicitly absorbs `U1` as well.
   /// So the code below avoids absorbing `U1` in the RO.
+  #[tracing::instrument(
+    name = "NIFS::prove", 
+    level = "debug", 
+    skip_all)]
   pub fn prove(
     ck: &CommitmentKey<E>,
     ro_consts: &ROConstants<E>,

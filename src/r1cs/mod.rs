@@ -247,6 +247,10 @@ impl<E: Engine> R1CSShape<E> {
 
   /// A method to compute a commitment to the cross-term `T` given a
   /// Relaxed R1CS instance-witness pair and an R1CS instance-witness pair
+  #[tracing::instrument(
+    name = "R1CSShape::commit_T", 
+    level = "debug", 
+    skip_all)]
   pub fn commit_T(
     &self,
     ck: &CommitmentKey<E>,

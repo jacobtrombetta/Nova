@@ -18,6 +18,8 @@ use nova_snark::{
     Engine,
   },
 };
+use chrono::Local;
+use std::thread;
 
 #[derive(Clone, Debug, Default)]
 struct NonTrivialCircuit<F: PrimeField> {
@@ -66,10 +68,13 @@ type S2 = nova_snark::spartan::snark::RelaxedR1CSSNARK<E2, EE2>;
 fn bench_compressed_snark_internal<S1: RelaxedR1CSSNARKTrait<E1>, S2: RelaxedR1CSSNARKTrait<E2>>(
   num_cons: usize,
 ) {
+  println!("bench_compressed_snark_internal num_cons: {}", num_cons);
   let c_primary = NonTrivialCircuit::new(num_cons);
+  println!("TrivialCircuit::default");
   let c_secondary = TrivialCircuit::default();
 
   // Produce public parameters
+  println!("PublicParams::<E1, E2, C1, C2>::setup");
   let pp = PublicParams::<E1, E2, C1, C2>::setup(
     &c_primary,
     &c_secondary,
@@ -79,37 +84,53 @@ fn bench_compressed_snark_internal<S1: RelaxedR1CSSNARKTrait<E1>, S2: RelaxedR1C
   .unwrap();
 
   // Produce prover and verifier keys for CompressedSNARK
-  let (pk, vk) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp).unwrap();
+  println!("CompressedSNARK::<_, _, _, _, S1, S2>::setup");
+  let (_, _) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp).unwrap();
 
   // produce a recursive SNARK
-  let num_steps = 3;
-  let mut recursive_snark: RecursiveSNARK<E1, E2, C1, C2> = RecursiveSNARK::new(
-    &pp,
-    &c_primary,
-    &c_secondary,
-    &[<E1 as Engine>::Scalar::from(2u64)],
-    &[<E2 as Engine>::Scalar::from(2u64)],
-  )
-  .unwrap();
-
-  for i in 0..num_steps {
-    let res = recursive_snark.prove_step(&pp, &c_primary, &c_secondary);
-    assert!(res.is_ok());
-
-    // verify the recursive snark at each step of recursion
-    let res = recursive_snark.verify(
+  for _ in 0..1 {
+    let num_steps = 3;
+    println!("RecursiveSNARK::new");
+    let mut recursive_snark: RecursiveSNARK<E1, E2, C1, C2> = RecursiveSNARK::new(
       &pp,
-      i + 1,
+      &c_primary,
+      &c_secondary,
       &[<E1 as Engine>::Scalar::from(2u64)],
       &[<E2 as Engine>::Scalar::from(2u64)],
-    );
-    assert!(res.is_ok());
+    )
+    .unwrap();
+
+    for i in 0..num_steps {
+      println!("RecursiveSNARK::prove_step step {}", i);
+      let thread_id = thread::current().id();
+      let timestamp = Local::now();
+      println!("Start RecursiveSNARK::prove_step Thread ID: {:?}, Timestamp: {}", thread_id, timestamp);
+      let res = recursive_snark.prove_step(&pp, &c_primary, &c_secondary);
+      let timestamp = Local::now();
+      println!("End RecursiveSNARK::prove_step Thread ID: {:?}, Timestamp: {}", thread_id, timestamp);
+      assert!(res.is_ok());
+
+      // verify the recursive snark at each step of recursion
+      println!("RecursiveSNARK::verify");
+      let timestamp = Local::now();
+      println!("Start RecursiveSNARK::verify Thread ID: {:?}, Timestamp: {}", thread_id, timestamp);
+      let res = recursive_snark.verify(
+        &pp,
+        i + 1,
+        &[<E1 as Engine>::Scalar::from(2u64)],
+        &[<E2 as Engine>::Scalar::from(2u64)],
+      );
+      let timestamp = Local::now();
+      println!("End RecursiveSNARK::verify Thread ID: {:?}, Timestamp: {}", thread_id, timestamp);
+      assert!(res.is_ok());
+    }
   }
 
-  // Bench time to produce a compressed SNARK
-  for _ in 0..3 {
-    let _ = CompressedSNARK::<_, _, _, _, S1, S2>::prove(&pp, &pk, &recursive_snark).is_ok();
-  }
+  // // Bench time to produce a compressed SNARK
+  // for _ in 0..1 {
+  //   println!("CompressedSNARK::<_, _, _, _, S1, S2>::prove");
+  //   let _ = CompressedSNARK::<_, _, _, _, S1, S2>::prove(&pp, &pk, &recursive_snark).is_ok();
+  // }
 }
 
 fn main() {

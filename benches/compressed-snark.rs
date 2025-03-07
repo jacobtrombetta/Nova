@@ -52,7 +52,7 @@ criterion_main!(compressed_snark);
 
 // This should match the value for the primary in test_recursive_circuit_bn256_grumpkin
 const NUM_CONS_VERIFIER_CIRCUIT_PRIMARY: usize = 9985;
-const NUM_SAMPLES: usize = 10;
+const NUM_SAMPLES: usize = 1;
 
 /// Benchmarks the compressed SNARK at a provided number of constraints
 ///

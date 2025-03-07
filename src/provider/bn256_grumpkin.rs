@@ -20,6 +20,9 @@ use rayon::prelude::*;
 use sha3::Shake256;
 use std::io::Read;
 
+use chrono::Local;
+use std::thread;
+
 /// Re-exports that give access to the standard aliases used in the code base, for bn256
 pub mod bn256 {
   pub use halo2curves::bn256::{Fq as Base, Fr as Scalar, G1Affine as Affine, G1 as Point};
@@ -58,7 +61,34 @@ impl DlogGroup for bn256::Point {
     skip_all
   )]
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self {
-    msm_best(scalars, bases)
+    let thread_id = thread::current().id();
+    let timestamp = Local::now();
+    println!("Start MSM Thread ID: {:?}, Timestamp: {} - (CPU)", thread_id, timestamp);
+    let result = msm_best(scalars, bases);
+    let timestamp = Local::now();
+    println!("End MSM Thread ID: {:?}, Timestamp: {} - (CPU)", thread_id, timestamp);
+    result
+  }
+  #[cfg(not(feature = "blitzar"))]
+  #[tracing::instrument(
+    name = "bn256::batch_vartime_multiscalar_mul (cpu)",
+    level = "debug",
+    skip_all
+  )]
+  fn batch_vartime_multiscalar_mul(
+    scalars: &[Vec<Self::Scalar>],
+    bases: &[Self::AffineGroupElement],
+  ) -> Vec<Self> {
+    let thread_id = thread::current().id();
+    let timestamp = Local::now();
+    println!("Start MSM Thread ID: {:?}, Timestamp: {} - (batch CPU)", thread_id, timestamp);
+    let result = scalars
+      .par_iter()
+      .map(|scalar| Self::vartime_multiscalar_mul(scalar, &bases[..scalar.len()]))
+      .collect::<Vec<_>>();
+    let timestamp = Local::now();
+    println!("End MSM Thread ID: {:?}, Timestamp: {} - (batch CPU)", thread_id, timestamp);
+    result
   }
   #[cfg(feature = "blitzar")]
   #[tracing::instrument(
@@ -67,7 +97,13 @@ impl DlogGroup for bn256::Point {
     skip_all
   )]
   fn vartime_multiscalar_mul(scalars: &[Self::Scalar], bases: &[Self::AffineGroupElement]) -> Self {
-    super::blitzar::vartime_multiscalar_mul(scalars, bases)
+    let thread_id = thread::current().id();
+    let timestamp = Local::now();
+    println!("Start MSM Thread ID: {:?}, Timestamp: {} - (GPU)", thread_id, timestamp);
+    let result = super::blitzar::vartime_multiscalar_mul(scalars, bases);
+    let timestamp = Local::now();
+    println!("End MSM Thread ID: {:?}, Timestamp: {} - (GPU)", thread_id, timestamp);
+    result
   }
   #[cfg(feature = "blitzar")]
   #[tracing::instrument(
@@ -79,7 +115,13 @@ impl DlogGroup for bn256::Point {
     scalars: &[Vec<Self::Scalar>],
     bases: &[Self::AffineGroupElement],
   ) -> Vec<Self> {
-    super::blitzar::batch_vartime_multiscalar_mul(scalars, bases)
+    let thread_id = thread::current().id();
+    let timestamp = Local::now();
+    println!("Start MSM Thread ID: {:?}, Timestamp: {} - (batch GPU)", thread_id, timestamp);
+    let result = super::blitzar::batch_vartime_multiscalar_mul(scalars, bases);
+    let timestamp = Local::now();
+    println!("End MSM Thread ID: {:?}, Timestamp: {} - (batch GPU)", thread_id, timestamp);
+    result
   }
 
   fn affine(&self) -> Self::AffineGroupElement {
