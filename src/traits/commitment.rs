@@ -62,6 +62,7 @@ pub trait CommitmentEngineTrait<E: Engine>: Clone + Send + Sync {
   fn load_setup(
     reader: &mut (impl std::io::Read + std::io::Seek),
     n: usize,
+    compressed: bool,
   ) -> Result<Self::CommitmentKey, PtauFileError>;
 
   /// Samples a new commitment key of a specified size

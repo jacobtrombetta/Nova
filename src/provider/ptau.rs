@@ -77,12 +77,20 @@ pub(crate) fn write_points<G>(
   mut writer: &mut impl Write,
   points: Vec<G>,
   // section_id: u32,
+  compress: bool,
 ) -> Result<(), PtauFileError>
 where
   G: halo2curves::serde::SerdeObject + CurveAffine,
 {
-  for point in points {
-    point.write_raw(&mut writer)?;
+  if !compress {
+    for point in points {
+      point.write_raw(&mut writer)?;
+    }
+  } else {
+    for point in points {
+      let compressed_point = point.to_bytes();
+      writer.write_all(compressed_point.as_ref())?;
+    }
   }
   Ok(())
 }
@@ -93,6 +101,7 @@ pub fn write_ptau<G1, G2>(
   g1_points: Vec<G1>,
   g2_points: Vec<G2>,
   power: u32,
+  compressed: bool,
 ) -> Result<(), PtauFileError>
 where
   G1: halo2curves::serde::SerdeObject + CurveAffine,
@@ -115,7 +124,7 @@ where
     writer.write_i64::<LittleEndian>(0)?;
     let start = writer.stream_position()?;
 
-    write_points(writer, g1_points)?;
+    write_points(writer, g1_points, compressed)?;
 
     let size = writer.stream_position()? - start;
 
@@ -132,7 +141,7 @@ where
     writer.write_i64::<LittleEndian>(0)?;
     let start = writer.stream_position()?;
 
-    write_points(writer, g2_points)?;
+    write_points(writer, g2_points, compressed)?;
 
     let size = writer.stream_position()? - start;
 
@@ -244,13 +253,30 @@ fn read_header<Base: PrimeField>(
 pub(crate) fn read_points<G>(
   mut reader: &mut impl Read,
   num: usize,
+  compressed: bool,
 ) -> Result<Vec<G>, PtauFileError>
 where
   G: halo2curves::serde::SerdeObject + CurveAffine,
 {
   let mut res = Vec::with_capacity(num);
-  for _ in 0..num {
-    res.push(G::read_raw(&mut reader)?);
+
+  if !compressed {
+    for _ in 0..num {
+      res.push(G::read_raw(&mut reader)?);
+    }
+  } else {
+    let repr_size: usize = std::mem::size_of::<G::Repr>();
+
+    for _ in 0..num {
+      let mut compressed_point = vec![0u8; repr_size];
+      reader.read_exact(&mut compressed_point)?;
+      let mut compressed_point_repr = G::Repr::default();
+      compressed_point_repr
+        .as_mut()
+        .copy_from_slice(&compressed_point);
+      let point = G::from_bytes(&compressed_point_repr).unwrap();
+      res.push(point);
+    }
   }
   Ok(res)
 }
@@ -260,6 +286,7 @@ pub fn read_ptau<G1, G2>(
   mut reader: &mut (impl Read + Seek),
   num_g1: usize,
   num_g2: usize,
+  compressed: bool,
 ) -> Result<(Vec<G1>, Vec<G2>), PtauFileError>
 where
   G1: halo2curves::serde::SerdeObject + CurveAffine,
@@ -271,10 +298,10 @@ where
   read_header::<G1::Base>(reader, num_g1, num_g2)?;
 
   reader.seek(SeekFrom::Start(metadata.pos_tau_g1))?;
-  let g1_points = read_points::<G1>(&mut reader, num_g1)?;
+  let g1_points = read_points::<G1>(&mut reader, num_g1, compressed)?;
 
   reader.seek(SeekFrom::Start(metadata.pos_tau_g2))?;
-  let g2_points = read_points::<G2>(&mut reader, num_g2)?;
+  let g2_points = read_points::<G2>(&mut reader, num_g2, compressed)?;
 
   Ok((g1_points, g2_points))
 }

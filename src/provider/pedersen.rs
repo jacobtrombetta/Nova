@@ -189,12 +189,16 @@ impl<E: Engine> CommitmentKey<E>
 where
   E::GE: DlogGroup,
 {
-  pub fn save_to(&self, writer: &mut impl std::io::Write) -> Result<(), PtauFileError> {
+  pub fn save_to(
+    &self,
+    writer: &mut impl std::io::Write,
+    compressed: bool,
+  ) -> Result<(), PtauFileError> {
     writer.write_all(&KEY_FILE_HEAD)?;
     let mut points = Vec::with_capacity(self.ck.len() + 1);
     points.push(self.h.unwrap());
     points.extend(self.ck.iter().cloned());
-    write_points(writer, points)
+    write_points(writer, points, compressed)
   }
 }
 
@@ -254,6 +258,7 @@ where
   fn load_setup(
     reader: &mut (impl std::io::Read + std::io::Seek),
     n: usize,
+    compressed: bool,
   ) -> Result<Self::CommitmentKey, PtauFileError> {
     let num = n.next_power_of_two();
     {
@@ -264,7 +269,7 @@ where
       }
     }
 
-    let points = read_points(reader, num + 1)?;
+    let points = read_points(reader, num + 1, compressed)?;
 
     let (first, second) = points.split_at(1);
 
@@ -389,14 +394,35 @@ mod tests {
   #[test]
   fn test_key_save_load() {
     let path = "/tmp/pedersen_test.keys";
+    let compress = false;
 
     let keys = CommitmentEngine::<E>::setup(b"test", 100);
 
     keys
-      .save_to(&mut BufWriter::new(File::create(path).unwrap()))
+      .save_to(&mut BufWriter::new(File::create(path).unwrap()), compress)
       .unwrap();
 
-    let keys_read = CommitmentEngine::load_setup(&mut File::open(path).unwrap(), 100);
+    let keys_read = CommitmentEngine::load_setup(&mut File::open(path).unwrap(), 100, compress);
+
+    assert!(keys_read.is_ok());
+    let keys_read: CommitmentKey<E> = keys_read.unwrap();
+    assert_eq!(keys_read.ck.len(), keys.ck.len());
+    assert_eq!(keys_read.h, keys.h);
+    assert_eq!(keys_read.ck, keys.ck);
+  }
+
+  #[test]
+  fn test_key_save_load_compressed() {
+    let path = "/tmp/pedersen_test_compress.keys";
+    let compress = true;
+
+    let keys = CommitmentEngine::<E>::setup(b"test", 100);
+
+    keys
+      .save_to(&mut BufWriter::new(File::create(path).unwrap()), compress)
+      .unwrap();
+
+    let keys_read = CommitmentEngine::load_setup(&mut File::open(path).unwrap(), 100, compress);
 
     assert!(keys_read.is_ok());
     let keys_read: CommitmentKey<E> = keys_read.unwrap();

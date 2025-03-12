@@ -137,6 +137,7 @@ where
   pub fn save_to(
     &self,
     mut writer: &mut (impl std::io::Write + std::io::Seek),
+    compress: bool,
   ) -> Result<(), PtauFileError> {
     let mut g1_points = Vec::with_capacity(self.ck.len() + 1);
     g1_points.push(self.h);
@@ -145,7 +146,7 @@ where
     let g2_points = vec![self.tau_H];
     let power = g1_points.len().next_power_of_two().trailing_zeros() + 1;
 
-    write_ptau(&mut writer, g1_points, g2_points, power)
+    write_ptau(&mut writer, g1_points, g2_points, power, compress)
   }
 }
 
@@ -504,10 +505,11 @@ where
   fn load_setup(
     reader: &mut (impl std::io::Read + std::io::Seek),
     n: usize,
+    compressed: bool,
   ) -> Result<Self::CommitmentKey, PtauFileError> {
     let num = n.next_power_of_two();
 
-    let (g1_points, g2_points) = read_ptau(reader, num + 1, 1)?;
+    let (g1_points, g2_points) = read_ptau(reader, num + 1, 1, compressed)?;
 
     let (h, ck) = g1_points.split_at(1);
     let h = h[0];
@@ -1128,6 +1130,7 @@ mod tests {
   fn test_save_load_ck() {
     let n = 4;
     let filename = "/tmp/kzg_test.ptau";
+    let compress = false;
     const BUFFER_SIZE: usize = 64 * 1024;
     let ck: CommitmentKey<E> = CommitmentEngine::setup(b"test", n);
 
@@ -1139,13 +1142,47 @@ mod tests {
       .unwrap();
     let mut writer = BufWriter::with_capacity(BUFFER_SIZE, file);
 
-    ck.save_to(&mut writer).unwrap();
+    ck.save_to(&mut writer, compress).unwrap();
 
     let file = OpenOptions::new().read(true).open(filename).unwrap();
 
     let mut reader = BufReader::new(file);
 
-    let read_ck = hyperkzg::CommitmentEngine::<E>::load_setup(&mut reader, ck.ck.len()).unwrap();
+    let read_ck =
+      hyperkzg::CommitmentEngine::<E>::load_setup(&mut reader, ck.ck.len(), compress).unwrap();
+
+    assert_eq!(ck.ck.len(), read_ck.ck.len());
+    assert_eq!(ck.h, read_ck.h);
+    assert_eq!(ck.tau_H, read_ck.tau_H);
+    for i in 0..ck.ck.len() {
+      assert_eq!(ck.ck[i], read_ck.ck[i]);
+    }
+  }
+
+  #[test]
+  fn test_save_load_ck_compressed() {
+    let n = 4;
+    let filename = "/tmp/kzg_test_compressed.ptau";
+    let compress = true;
+    const BUFFER_SIZE: usize = 64 * 1024;
+    let ck: CommitmentKey<E> = CommitmentEngine::setup(b"test", n);
+
+    let file = OpenOptions::new()
+      .write(true)
+      .create(true)
+      .truncate(true)
+      .open(filename)
+      .unwrap();
+    let mut writer = BufWriter::with_capacity(BUFFER_SIZE, file);
+
+    ck.save_to(&mut writer, compress).unwrap();
+
+    let file = OpenOptions::new().read(true).open(filename).unwrap();
+
+    let mut reader = BufReader::new(file);
+
+    let read_ck =
+      hyperkzg::CommitmentEngine::<E>::load_setup(&mut reader, ck.ck.len(), compress).unwrap();
 
     assert_eq!(ck.ck.len(), read_ck.ck.len());
     assert_eq!(ck.h, read_ck.h);
