@@ -18,13 +18,23 @@ type E = Bn256EngineKZG;
 
 const KZG_KEY_DIR: &str = "/tmp/";
 
-pub fn get_key_file_path(num_gens: usize) -> String {
+pub fn get_key_file_path(num_gens: usize, compress: bool) -> String {
   let id = std::any::type_name::<E>().chars()
         .filter(|c| c.is_alphanumeric())  // Keep only alphanumeric characters
         .collect::<String>();
 
   let base_dir = KZG_KEY_DIR.trim_end_matches("/");
-  format!("{}/kzg_{}_{}.keys", base_dir, id, num_gens)
+  format!(
+    "{}/kzg_{}_{}_{}.keys",
+    base_dir,
+    id,
+    num_gens,
+    if compress {
+      "compressed"
+    } else {
+      "uncompressed"
+    }
+  )
 }
 
 const LABEL: &[u8; 4] = b"test";
@@ -40,10 +50,10 @@ macro_rules! timeit {
   }};
 }
 
-fn keygen_save_large() {
+fn keygen_save_large(compress: bool) {
   const BUFFER_SIZE: usize = 64 * 1024;
 
-  let path = get_key_file_path(MAX_NUM_GENS);
+  let path = get_key_file_path(MAX_NUM_GENS, compress);
 
   if check_sanity_of_ptau_file::<bn256::G1Affine>(&path, MAX_NUM_GENS + 1, 1).is_err() {
     println!("Generating {} KZG keys ", MAX_NUM_GENS);
@@ -61,14 +71,19 @@ fn keygen_save_large() {
     let mut writer = BufWriter::with_capacity(BUFFER_SIZE, &file);
 
     let (_, dur) = timeit!(|| {
-      ck.save_to(&mut writer).unwrap();
+      ck.save_to(&mut writer, compress).unwrap();
     });
 
     println!(
-      "Saved {} keys to {} in {:?}, file size={}MB",
+      "Saved {} keys to {} in {:?}, {} file size={}MB",
       MAX_NUM_GENS,
       &path,
       dur,
+      if compress {
+        "compressed"
+      } else {
+        "uncompressed"
+      },
       file.metadata().unwrap().len() / 1024 / 1024
     );
   } else {
@@ -78,7 +93,7 @@ fn keygen_save_large() {
   let (res, dur) = timeit!(|| {
     let file = OpenOptions::new().read(true).open(&path).unwrap();
     let mut reader = BufReader::new(file);
-    CommitmentEngine::<E>::load_setup(&mut reader, MAX_NUM_GENS)
+    CommitmentEngine::<E>::load_setup(&mut reader, MAX_NUM_GENS, compress)
   });
 
   assert!(res.is_ok());
@@ -87,5 +102,6 @@ fn keygen_save_large() {
 }
 
 fn main() {
-  keygen_save_large();
+  keygen_save_large(false);
+  keygen_save_large(true);
 }
