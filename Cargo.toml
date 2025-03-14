@@ -68,7 +68,6 @@ name = "msm"
 harness = false
 
 [features]
-blitzar = ["dep:blitzar"]
 default = ["halo2curves/asm"]
 flamegraph = ["pprof2/flamegraph", "pprof2/criterion"]
 experimental = []
