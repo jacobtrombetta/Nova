@@ -736,15 +736,17 @@ where
                           transcript: &mut <E as Engine>::TE|
      -> (Vec<G1Affine<E>>, Vec<[E::Scalar; 3]>) {
       let poly_eval = |f: &[E::Scalar], u: E::Scalar| -> E::Scalar {
-        let mut v = f[0];
-        let mut u_power = E::Scalar::ONE;
+        let v_rest = f
+          .par_iter()
+          .enumerate()
+          .skip(1)
+          .map(|(i, fi)| {
+            let u_power = u.pow_vartime(&[i as u64]);
+            u_power * fi
+          })
+          .reduce(|| E::Scalar::ZERO, |acc, x| acc + x);
 
-        for fi in f.iter().skip(1) {
-          u_power *= u;
-          v += u_power * fi;
-        }
-
-        v
+        f[0] + v_rest
       };
 
       let scalar_vector_muladd = |a: &mut Vec<E::Scalar>, v: &Vec<E::Scalar>, s: E::Scalar| {
