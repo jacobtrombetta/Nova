@@ -33,6 +33,7 @@ use num_traits::ToPrimitive;
 use rand_core::OsRng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use tracing::{span, Level};
 
 /// Alias to points on G1 that are in preprocessed form
 type G1Affine<E> = <<E as Engine>::GE as DlogGroup>::AffineGroupElement;
@@ -692,8 +693,11 @@ where
     point: &[E::Scalar],
     _eval: &E::Scalar,
   ) -> Result<Self::EvaluationArgument, NovaError> {
+    let span = span!(Level::DEBUG, "prove define x").entered();
     let x: Vec<E::Scalar> = point.to_vec();
+    span.exit();
 
+    let span = span!(Level::DEBUG, "prove define closures").entered();
     //////////////// begin helper closures //////////
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
       // On input f(x) and u compute the witness polynomial used to prove
@@ -795,16 +799,20 @@ where
 
       (w, v)
     };
+    span.exit();
 
     ///// END helper closures //////////
 
+    let span = span!(Level::DEBUG, "prove initalize").entered();
     let ell = x.len();
     let n = hat_P.len();
     assert_eq!(n, 1 << ell); // Below we assume that n is a power of two
+    span.exit();
 
     // Phase 1  -- create commitments com_1, ..., com_\ell
     // We do not compute final Pi (and its commitment) as it is constant and equals to 'eval'
     // also known to verifier, so can be derived on its side as well
+    let span = span!(Level::DEBUG, "prove phase 1").entered();
     let mut polys: Vec<Vec<E::Scalar>> = Vec::new();
     polys.push(hat_P.to_vec());
     for i in 0..ell - 1 {
@@ -818,23 +826,30 @@ where
 
       polys.push(Pi);
     }
+    span.exit();
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
+    let span = span!(Level::DEBUG, "prove batch_commit").entered();
     let r = vec![E::Scalar::ZERO; ell - 1];
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
       .iter()
       .map(|i| i.comm.affine())
       .collect();
+    span.exit();
 
     // Phase 2
     // We do not need to add x to the transcript, because in our context x was obtained from the transcript.
     // We also do not need to absorb `C` and `eval` as they are already absorbed by the transcript by the caller
+    let span = span!(Level::DEBUG, "prove phase 2").entered();
     let r = Self::compute_challenge(&com, transcript);
     let u = [r, -r, r * r];
+    span.exit();
 
     // Phase 3 -- create response
+    let span = span!(Level::DEBUG, "prove phase 3").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
+    span.exit();
 
     Ok(EvaluationArgument {
       com,
