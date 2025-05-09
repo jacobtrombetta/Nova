@@ -8,7 +8,7 @@ use tracing::{span, Level};
 pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
   let mut blitzar_commitments = vec![Point::default(); 1];
 
-  let scalar_bytes: Vec<[u8; 32]> = scalars.iter().map(|s| s.to_bytes()).collect();
+  let scalar_bytes: Vec<[u8; 32]> = scalars.par_iter().map(|s| s.to_bytes()).collect();
 
   blitzar::compute::compute_bn254_g1_uncompressed_commitments_with_halo2_generators(
     &mut blitzar_commitments,
@@ -28,7 +28,7 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
   let span = span!(Level::TRACE, "batch_vartime_multiscalar_mul - scalar bytes").entered();
   let scalar_bytes: Vec<Vec<[u8; 32]>> = scalars
     .par_iter()
-    .map(|s| s.iter().map(|v| v.to_bytes()).collect())
+    .map(|s| s.par_iter().map(|v| v.to_bytes()).collect())
     .collect();
   span.exit();
 
