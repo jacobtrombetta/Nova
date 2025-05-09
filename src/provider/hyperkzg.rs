@@ -486,15 +486,21 @@ where
     assert!(ck.ck.len() >= max);
     span.exit();
 
+    let span = span!(Level::DEBUG, "batch_commit - h").entered();
     let h = <E::GE as DlogGroup>::group(&ck.h);
+    span.exit();
 
-    E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
+    let span = span!(Level::DEBUG, "batch_commit - E::GE::batch_vartime_multiscalar_mul").entered();
+    let r = E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
       .iter()
       .zip(r.iter())
       .map(|(commit, r_i)| Commitment {
         comm: *commit + (h * r_i),
       })
-      .collect()
+      .collect();
+    span.exit();
+
+    r
   }
 
   fn commit_small<T: Integer + Into<u64> + Copy + Sync + ToPrimitive>(
