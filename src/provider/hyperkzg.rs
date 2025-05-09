@@ -653,9 +653,15 @@ where
   }
 
   fn verifier_second_challenge(W: &[G1Affine<E>], transcript: &mut <E as Engine>::TE) -> E::Scalar {
+    let span = span!(Level::DEBUG, "verifier_second_challenge - absorb").entered();
     transcript.absorb(b"W", &W.to_vec().as_slice());
+    span.exit();
 
-    transcript.squeeze(b"d").unwrap()
+    let span = span!(Level::DEBUG, "verifier_second_challenge - squeeze").entered();
+    let t = transcript.squeeze(b"d").unwrap();
+    span.exit();
+
+    t
   }
 }
 
@@ -841,8 +847,10 @@ where
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
-    let span = span!(Level::DEBUG, "prove batch_commit").entered();
+    let span = span!(Level::DEBUG, "prove create r").entered();
     let r = vec![E::Scalar::ZERO; ell - 1];
+    span.exit();
+    let span = span!(Level::DEBUG, "prove batch_commit").entered();
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
       .par_iter()
       .map(|i| i.comm.affine())
