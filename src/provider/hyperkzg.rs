@@ -481,8 +481,10 @@ where
   ) -> Vec<Self::Commitment> {
     assert!(v.len() == r.len());
 
+    let span = span!(Level::DEBUG, "batch_commit - max").entered();
     let max = v.iter().map(|v| v.len()).max().unwrap_or(0);
     assert!(ck.ck.len() >= max);
+    span.exit();
 
     let h = <E::GE as DlogGroup>::group(&ck.h);
 
