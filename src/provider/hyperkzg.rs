@@ -492,8 +492,8 @@ where
 
     let span = span!(Level::DEBUG, "batch_commit - E::GE::batch_vartime_multiscalar_mul").entered();
     let r = E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
-      .iter()
-      .zip(r.iter())
+      .par_iter()
+      .zip(r.par_iter())
       .map(|(commit, r_i)| Commitment {
         comm: *commit + (h * r_i),
       })
