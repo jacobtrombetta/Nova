@@ -850,7 +850,7 @@ where
         *Pi_j = x[ell - i - 1] * (polys[i][2 * j + 1] - polys[i][2 * j]) + polys[i][2 * j];
       });
 
-      polys.push(Pi.clone());
+      polys.push(std::mem::take(&mut Pi));
     }
     span.exit();
 
