@@ -27,14 +27,14 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
 
   let span = span!(Level::TRACE, "batch_vartime_multiscalar_mul - scalar bytes").entered();
   let scalar_bytes: Vec<Vec<[u8; 32]>> = scalars
-    .iter()
-    .map(|s| s.iter().map(|v| v.to_bytes()).collect())
+    .par_iter()
+    .map(|s| s.par_iter().map(|v| v.to_bytes()).collect())
     .collect();
   span.exit();
 
   let span = span!(Level::TRACE, "batch_vartime_multiscalar_mul - scalars_table").entered();
   let scalars_table: Vec<blitzar::sequence::Sequence<'_>> =
-    scalar_bytes.iter().map(|s| s.into()).collect();
+    scalar_bytes.par_iter().map(|s| s.into()).collect();
   span.exit();
 
   let span = span!(Level::TRACE, "batch_vartime_multiscalar_mul - compute").entered();
