@@ -840,16 +840,17 @@ where
     let span = span!(Level::DEBUG, "prove phase 1").entered();
     let mut polys: Vec<Vec<E::Scalar>> = Vec::new();
     polys.push(hat_P.to_vec());
+    let mut Pi = Vec::new();
     for i in 0..ell - 1 {
       let Pi_len = polys[i].len() / 2;
-      let mut Pi = vec![E::Scalar::ZERO; Pi_len];
+      Pi.resize(Pi_len, E::Scalar::ZERO);
 
       #[allow(clippy::needless_range_loop)]
       Pi.par_iter_mut().enumerate().for_each(|(j, Pi_j)| {
         *Pi_j = x[ell - i - 1] * (polys[i][2 * j + 1] - polys[i][2 * j]) + polys[i][2 * j];
       });
 
-      polys.push(Pi);
+      polys.push(Pi.clone());
     }
     span.exit();
 
