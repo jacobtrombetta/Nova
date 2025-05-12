@@ -698,7 +698,7 @@ where
 
     //////////////// begin helper closures //////////
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
-
+      /*
       let div_by_monomial = |f: &[E::Scalar], u: E::Scalar, target_chunks: usize| -> Vec<E::Scalar> {
         assert!(!f.is_empty());
         let target_chunk_size = f.len() / target_chunks;
@@ -738,6 +738,9 @@ where
         result
       };
 
+      let h = &div_by_monomial(&f, u, 1<<10)[1..];
+      */
+
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
       // division (f(x) - f(u)) / (x - u), but we don't use a general
@@ -751,8 +754,6 @@ where
       // the quotient of f(x)/(x-u) and (f(x) - f(v))/(x-u) is the
       // same.  One advantage is that computing f(u) could be decoupled
       // from kzg_open, it could be done later or separate from computing W.
-
-      /*
       let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
         let d = f.len();
 
@@ -766,12 +767,6 @@ where
       };
 
       let h = compute_witness_polynomial(f, u);
-      println!("[DEBUG] h: {:?}", h);
-      */
-
-      let h = &div_by_monomial(&f, u, 1<<10)[1..];
-      //let h = &h[1..];
-      //println!("[DEBUG] h: {:?}", h);
 
       E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
     };
@@ -892,7 +887,7 @@ where
     let u = [r, -r, r * r];
 
     // Phase 3 -- create response
-    let span = span!(Level::DEBUG, "kzg_open_batch").entered();
+    let span = span!(Level::DEBUG, "kzg_open_batch - NOVA MAIN").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
     span.exit();
 
