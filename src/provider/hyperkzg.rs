@@ -698,7 +698,7 @@ where
 
     //////////////// begin helper closures //////////
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
-      /*
+
       let div_by_monomial = |f: &[E::Scalar], u: E::Scalar, target_chunks: usize| -> Vec<E::Scalar> {
         assert!(!f.is_empty());
         let target_chunk_size = f.len() / target_chunks;
@@ -739,7 +739,8 @@ where
       };
 
       let h = &div_by_monomial(&f, u, 1<<10)[1..];
-      */
+
+      /*
 
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
@@ -767,6 +768,7 @@ where
       };
 
       let h = compute_witness_polynomial(f, u);
+       */
 
       E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
     };
@@ -887,7 +889,7 @@ where
     let u = [r, -r, r * r];
 
     // Phase 3 -- create response
-    let span = span!(Level::DEBUG, "kzg_open_batch - NOVA MAIN").entered();
+    let span = span!(Level::DEBUG, "kzg_open_batch - div_by_monomial").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
     span.exit();
 
