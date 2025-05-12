@@ -481,16 +481,11 @@ where
   ) -> Vec<Self::Commitment> {
     assert!(v.len() == r.len());
 
-    let span = span!(Level::DEBUG, "batch_commit - max").entered();
     let max = v.iter().map(|v| v.len()).max().unwrap_or(0);
     assert!(ck.ck.len() >= max);
-    span.exit();
 
-    let span = span!(Level::DEBUG, "batch_commit - h").entered();
     let h = <E::GE as DlogGroup>::group(&ck.h);
-    span.exit();
 
-    let span = span!(Level::DEBUG, "batch_commit - E::GE::batch_vartime_multiscalar_mul").entered();
     let r = E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
       .par_iter()
       .zip(r.par_iter())
@@ -498,7 +493,6 @@ where
         comm: *commit + (h * r_i),
       })
       .collect();
-    span.exit();
 
     r
   }
@@ -661,15 +655,8 @@ where
   }
 
   fn verifier_second_challenge(W: &[G1Affine<E>], transcript: &mut <E as Engine>::TE) -> E::Scalar {
-    let span = span!(Level::DEBUG, "verifier_second_challenge - absorb").entered();
     transcript.absorb(b"W", &W.to_vec().as_slice());
-    span.exit();
-
-    let span = span!(Level::DEBUG, "verifier_second_challenge - squeeze").entered();
-    let t = transcript.squeeze(b"d").unwrap();
-    span.exit();
-
-    t
+    transcript.squeeze(b"d").unwrap()
   }
 }
 
@@ -707,13 +694,50 @@ where
     point: &[E::Scalar],
     _eval: &E::Scalar,
   ) -> Result<Self::EvaluationArgument, NovaError> {
-    let span = span!(Level::DEBUG, "prove define x").entered();
     let x: Vec<E::Scalar> = point.to_vec();
-    span.exit();
 
-    let span = span!(Level::DEBUG, "prove define closures").entered();
     //////////////// begin helper closures //////////
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
+
+      let div_by_monomial = |f: &[E::Scalar], u: E::Scalar, target_chunks: usize| -> Vec<E::Scalar> {
+        assert!(!f.is_empty());
+        let target_chunk_size = f.len() / target_chunks;
+        let nu = target_chunk_size.max(1).ilog2();
+        let chunk_size = 1 << nu;
+        let u_to_the_chunk_size = (0..nu).fold(u, |u_pow, _| u_pow * u_pow);
+        let mut result = f.to_vec();
+
+        result
+            .par_chunks_mut(chunk_size)
+            .zip(f.par_chunks(chunk_size))
+            .for_each(|(chunk, f_chunk)| {
+                for i in (0..chunk.len() - 1).rev() {
+                    chunk[i] = f_chunk[i] + u * chunk[i + 1];
+                }
+            });
+    
+        let mut iter = result.chunks_mut(chunk_size).rev();
+        if let Some(last_chunk) = iter.next() {
+            let mut prev_partial = last_chunk[0];
+            for chunk in iter {
+                prev_partial = chunk[0] + u_to_the_chunk_size * prev_partial;
+                chunk[0] = prev_partial;
+            }
+        }
+    
+        result[1..]
+            .par_chunks_exact_mut(chunk_size)
+            .rev()
+            .for_each(|chunk| {
+                let mut prev_partial = chunk[chunk_size - 1];
+                for e in chunk.iter_mut().rev().skip(1) {
+                    prev_partial *= u;
+                    *e += prev_partial;
+                }
+            });
+        result
+      };
+
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
       // division (f(x) - f(u)) / (x - u), but we don't use a general
@@ -728,6 +752,7 @@ where
       // same.  One advantage is that computing f(u) could be decoupled
       // from kzg_open, it could be done later or separate from computing W.
 
+      /*
       let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
         let d = f.len();
 
@@ -741,6 +766,12 @@ where
       };
 
       let h = compute_witness_polynomial(f, u);
+      println!("[DEBUG] h: {:?}", h);
+      */
+
+      let h = &div_by_monomial(&f, u, 1<<10)[1..];
+      //let h = &h[1..];
+      //println!("[DEBUG] h: {:?}", h);
 
       E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
     };
@@ -800,9 +831,7 @@ where
       });
       span.exit();
 
-      let span = span!(Level::DEBUG, "kzg_open_batch get_batch_challenge").entered();
       let q = Self::get_batch_challenge(&v, transcript);
-      span.exit();
 
       let span = span!(Level::DEBUG, "kzg_open_batch kzg_compute_batch_polynomial").entered();
       let B = kzg_compute_batch_polynomial(f, q);
@@ -818,21 +847,16 @@ where
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
-      let span = span!(Level::DEBUG, "kzg_open_batch verifier_second_challenge").entered();
       let _d_0 = Self::verifier_second_challenge(&w, transcript);
-      span.exit();
 
       (w, v)
     };
-    span.exit();
 
     ///// END helper closures //////////
 
-    let span = span!(Level::DEBUG, "prove initalize").entered();
     let ell = x.len();
     let n = hat_P.len();
     assert_eq!(n, 1 << ell); // Below we assume that n is a power of two
-    span.exit();
 
     // Phase 1  -- create commitments com_1, ..., com_\ell
     // We do not compute final Pi (and its commitment) as it is constant and equals to 'eval'
@@ -855,26 +879,20 @@ where
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
-    let span = span!(Level::DEBUG, "prove create r").entered();
     let r = vec![E::Scalar::ZERO; ell - 1];
-    span.exit();
-    let span = span!(Level::DEBUG, "prove batch_commit").entered();
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
       .par_iter()
       .map(|i| i.comm.affine())
       .collect();
-    span.exit();
 
     // Phase 2
     // We do not need to add x to the transcript, because in our context x was obtained from the transcript.
     // We also do not need to absorb `C` and `eval` as they are already absorbed by the transcript by the caller
-    let span = span!(Level::DEBUG, "prove phase 2").entered();
     let r = Self::compute_challenge(&com, transcript);
     let u = [r, -r, r * r];
-    span.exit();
 
     // Phase 3 -- create response
-    let span = span!(Level::DEBUG, "prove phase 3").entered();
+    let span = span!(Level::DEBUG, "kzg_open_batch").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
     span.exit();
 
