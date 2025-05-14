@@ -33,6 +33,7 @@ use num_traits::ToPrimitive;
 use rand_core::OsRng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use tracing::{span, Level};
 
 /// Alias to points on G1 that are in preprocessed form
 type G1Affine<E> = <<E as Engine>::GE as DlogGroup>::AffineGroupElement;
@@ -789,6 +790,15 @@ where
         v
       };
 
+      let scalar_vector_muladd_parallel = |a: &mut Vec<E::Scalar>, v: &Vec<E::Scalar>, s: E::Scalar| {
+        assert!(a.len() >= v.len());
+        a.par_iter_mut()
+            .zip(v.par_iter())
+            .for_each(|(a_i, v_i)| {
+                *a_i += s * *v_i;
+            });
+      };
+
       let scalar_vector_muladd = |a: &mut Vec<E::Scalar>, v: &Vec<E::Scalar>, s: E::Scalar| {
         assert!(a.len() >= v.len());
         for i in 0..v.len() {
@@ -805,6 +815,20 @@ where
         let mut B = f[0].clone();
         for i in 1..k {
           scalar_vector_muladd(&mut B, &f[i], q_powers[i]); // B += q_powers[i] * f[i]
+        }
+
+        B
+      };
+
+      let kzg_compute_batch_polynomial_parallel = |f: &[Vec<E::Scalar>], q: E::Scalar| -> Vec<E::Scalar> {
+        let k = f.len(); // Number of polynomials we're batching
+
+        let q_powers = Self::batch_challenge_powers(q, k);
+
+        // Compute B(x) = f[0] + q*f[1] + q^2 * f[2] + ... q^(k-1) * f[k-1]
+        let mut B = f[0].clone();
+        for i in 1..k {
+          scalar_vector_muladd_parallel(&mut B, &f[i], q_powers[i]); // B += q_powers[i] * f[i]
         }
 
         B
@@ -827,7 +851,13 @@ where
       });
 
       let q = Self::get_batch_challenge(&v, transcript);
+      let span = span!(Level::DEBUG, "kzg_open_batch kzg_compute_batch_polynomial").entered();
       let B = kzg_compute_batch_polynomial(f, q);
+      span.exit();
+
+      let span = span!(Level::DEBUG, "kzg_open_batch kzg_compute_batch_polynomial_parallel").entered();
+      let _ = kzg_compute_batch_polynomial_parallel(f, q);
+      span.exit();
 
       // Now open B at u0, ..., u_{t-1}
       let w = u
