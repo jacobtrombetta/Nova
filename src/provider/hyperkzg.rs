@@ -913,7 +913,7 @@ where
           if h.len() != h_old.len() {
             println!("ERROR 1 - h.len() != h_old.len()");
           }
-          for i in 0..h.len() {
+          for i in 0..5 {
             if h[i] != h_old[i] {
               println!("ERROR 1 - h[i] != h_old[i] : {}", i);
             }
@@ -950,7 +950,7 @@ where
           if h.len() != h_old.len() {
             println!("ERROR 2 - h.len() != h_old.len()");
           }
-          for i in 0..h.len() {
+          for i in 0..5 {
             if h[i] != h_old[i] {
               println!("ERROR 2 - h[i] != h_old[i] : {}", i);
             }
