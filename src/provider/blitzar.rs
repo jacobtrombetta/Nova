@@ -39,8 +39,8 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
           println!("  Scalar {}: {:?}", j, bytes);
       }
   }
-  for (i, base) in bases.iter().take(10).enumerate() {
-    println!("Base {}: {:?}", i, base);
+  for i in 0..10 {
+    println!("Base {}: {:?}", i, bases);
   }
 
   let scalars_table: Vec<blitzar::sequence::Sequence<'_>> =
