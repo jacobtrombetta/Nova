@@ -21,8 +21,6 @@ pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
     bases,
   );
 
-  println!("blitzar_commitments[0]: {:?}", blitzar_commitments[0]);
-
   blitzar_commitments[0]
 }
 
@@ -53,10 +51,6 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
     &scalars_table,
     bases,
   );
-
-  for i in 0..3 {
-    println!("blitzar_commitments[{}]: {:?}", i, blitzar_commitments[i]);
-  }
 
   blitzar_commitments
 }
