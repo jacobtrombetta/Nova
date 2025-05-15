@@ -978,6 +978,14 @@ where
       span.exit();
       println!("w_new: {:?}", w_new);
 
+      for i in 0..w.len() {
+        if w[i] != w_new[i] {
+          println!("ERROR 3 - w[i] != w_new[i] : {}", i);
+          println!("w[i]: {:?}", w[i]);
+          println!("w_new[i]: {:?}", w_new[i]);
+        }
+      }
+
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
