@@ -469,11 +469,16 @@ where
     assert!(ck.ck.len() >= v.len());
 
     println!("v.len(): {}", v.len());
+    
+    let commit = E::GE::vartime_multiscalar_mul(v, &ck.ck[..v.len()]);
+    println!("commit: {:?}", commit);
     println!("ck.h: {:?}", &ck.h);
+    println!("r: {:?}", r);
+    let commit = commit + <E::GE as DlogGroup>::group(&ck.h) * r;
+    println!("commit + h * r: {:?}", commit);
 
     Commitment {
-      comm: E::GE::vartime_multiscalar_mul(v, &ck.ck[..v.len()])
-        + <E::GE as DlogGroup>::group(&ck.h) * r,
+      comm: commit,
     }
   }
 
@@ -491,13 +496,18 @@ where
 
     let h = <E::GE as DlogGroup>::group(&ck.h);
 
-    println!("h: {:?}", h);
-
     E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
       .iter()
       .zip(r.iter())
-      .map(|(commit, r_i)| Commitment {
-        comm: *commit + (h * r_i),
+      .map(|(commit, r_i)| {
+        println!("commit: {:?}", commit);
+        println!("h: {:?}", h);
+        println!("r_i: {:?}", r_i);
+        let commit = *commit + (h * r_i);
+        println!("commit + h * r_i: {:?}", commit);
+        Commitment {
+          comm: commit,
+        }
       })
       .collect()
   }
@@ -1057,9 +1067,9 @@ where
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
-      let _d_0 = Self::verifier_second_challenge(&w_batch, transcript);
+      let _d_0 = Self::verifier_second_challenge(&w, transcript);
 
-      (w_batch, v)
+      (w, v)
     };
 
     ///// END helper closures //////////
