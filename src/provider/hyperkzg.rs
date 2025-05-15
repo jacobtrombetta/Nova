@@ -468,6 +468,9 @@ where
   fn commit(ck: &Self::CommitmentKey, v: &[E::Scalar], r: &E::Scalar) -> Self::Commitment {
     assert!(ck.ck.len() >= v.len());
 
+    println!("v.len(): {}", v.len());
+    println!("ck.h: {:?}", &ck.h);
+
     Commitment {
       comm: E::GE::vartime_multiscalar_mul(v, &ck.ck[..v.len()])
         + <E::GE as DlogGroup>::group(&ck.h) * r,
@@ -484,7 +487,11 @@ where
     let max = v.iter().map(|v| v.len()).max().unwrap_or(0);
     assert!(ck.ck.len() >= max);
 
+    println!("max: {}", max);
+
     let h = <E::GE as DlogGroup>::group(&ck.h);
+
+    println!("h: {:?}", h);
 
     E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
       .iter()
