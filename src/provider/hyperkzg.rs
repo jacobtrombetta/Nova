@@ -905,6 +905,9 @@ where
           let h = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
 
+          println!("h.len(): {:?}", h.len());
+          println!("h_old.len(): {:?}", h_old.len());
+
           if h.len() != h_old.len() {
             println!("ERROR 1 - h.len() != h_old.len()");
           }
@@ -936,7 +939,10 @@ where
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
           let hi = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
-
+          
+          println!("hi.len(): {:?}", hi.len());
+          println!("h_old.len(): {:?}", h_old.len());
+          
           if hi.len() != h_old.len() {
             println!("ERROR 2 - hi.len() != h_old.len()");
           }
