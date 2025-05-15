@@ -81,7 +81,7 @@ pub trait DlogGroupExt: DlogGroup {
     bases: &[Self::AffineGroupElement],
   ) -> Vec<Self> {
     scalars
-      .iter()
+      .par_iter()
       .map(|scalar| Self::vartime_multiscalar_mul(scalar, &bases[..scalar.len()]))
       .collect::<Vec<_>>()
   }

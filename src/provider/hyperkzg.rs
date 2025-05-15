@@ -472,10 +472,11 @@ where
     println!("v[0]: {:?}", v[0]);
     
     let commit = E::GE::vartime_multiscalar_mul(v, &ck.ck[..v.len()]);
+    let h = <E::GE as DlogGroup>::group(&ck.h);
     println!("commit: {:?}", commit);
-    println!("ck.h: {:?}", &ck.h);
+    println!("h: {:?}", h);
     println!("r: {:?}", r);
-    let commit = commit + <E::GE as DlogGroup>::group(&ck.h) * r;
+    let commit = commit + h * r;
     println!("commit + h * r: {:?}", commit);
 
     Commitment {
@@ -1077,15 +1078,17 @@ where
           println!("ERROR 4 - w[i] != w_batch[i] : {}", i);
           println!("w[i]:       {:?}", w[i]);
           println!("w_batch[i]: {:?}", w_batch[i]);
+        } else {
+          println!("w[i] == w_batch[i]");
         }
       }
 
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
-      let _d_0 = Self::verifier_second_challenge(&w, transcript);
+      let _d_0 = Self::verifier_second_challenge(&w_batch, transcript);
 
-      (w, v)
+      (w_batch, v)
     };
 
     ///// END helper closures //////////
