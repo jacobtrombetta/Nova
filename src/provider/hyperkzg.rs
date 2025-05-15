@@ -979,7 +979,8 @@ where
       span_.exit();
 
       let span = span!(Level::DEBUG, "kzg_open_batch batch_commit").entered();
-      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &[E::Scalar::ZERO; 3])
+      let r = vec![E::Scalar::ZERO; h.len()];
+      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &r)
         .iter()
         .map(|i| i.comm.affine())
         .collect();
