@@ -496,6 +496,8 @@ where
 
     println!("max: {}", max);
     println!("v[0][0]: {:?}", v[0][0]);
+    println!("v[1][0]: {:?}", v[1][0]);
+    println!("v[2][0]: {:?}", v[2][0]);
 
     let h = <E::GE as DlogGroup>::group(&ck.h);
 
