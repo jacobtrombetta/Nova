@@ -861,10 +861,10 @@ where
       // The verifier needs f_i(u_j), so we compute them here
       // (V will compute B(u_j) itself)
       let mut v = vec![[E::Scalar::ZERO; 3]; k];
-      v.par_iter_mut().zip_eq(f).for_each(|(v_j, f)| {
+      v.iter_mut().zip(f).for_each(|(v_j, f)| {
         // for each poly f
         // for each poly f (except the last one - since it is constant)
-        v_j.par_iter_mut().enumerate().for_each(|(i, v_ij)| {
+        v_j.iter_mut().enumerate().for_each(|(i, v_ij)| {
           // for each point u
 
           let span = span!(Level::DEBUG, "kzg_open_batch poly_eval").entered();
