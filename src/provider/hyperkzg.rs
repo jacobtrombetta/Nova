@@ -709,20 +709,59 @@ where
       // the quotient of f(x)/(x-u) and (f(x) - f(v))/(x-u) is the
       // same.  One advantage is that computing f(u) could be decoupled
       // from kzg_open, it could be done later or separate from computing W.
+      let div_by_monomial = |f: &[E::Scalar], u: E::Scalar, target_chunks: usize| -> Vec<E::Scalar> {
+          assert!(!f.is_empty());
+          let target_chunk_size = f.len() / target_chunks;
+          let nu = target_chunk_size.max(1).ilog2();
+          let chunk_size = 1 << nu;
 
-      let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
-        let d = f.len();
+          let u_to_the_chunk_size = (0..nu).fold(u, |u_pow, _| u_pow * u_pow);
+          let mut result = f.to_vec();
+          result
+            .par_chunks_mut(chunk_size)
+            .zip(f.par_chunks(chunk_size))
+            .for_each(|(chunk, f_chunk)| {
+              for i in (0..chunk.len() - 1).rev() {
+                chunk[i] = f_chunk[i] + u * chunk[i + 1];
+              }
+            });
 
-        // Compute h(x) = f(x)/(x - u)
-        let mut h = vec![E::Scalar::ZERO; d];
-        for i in (1..d).rev() {
-          h[i - 1] = f[i] + h[i] * u;
-        }
+          let mut iter = result.chunks_mut(chunk_size).rev();
+          if let Some(last_chunk) = iter.next() {
+            let mut prev_partial = last_chunk[0];
+            for chunk in iter {
+              prev_partial = chunk[0] + u_to_the_chunk_size * prev_partial;
+              chunk[0] = prev_partial;
+            }
+          }
+
+          result[1..]
+            .par_chunks_exact_mut(chunk_size)
+            .rev()
+            .for_each(|chunk| {
+              let mut prev_partial = chunk[chunk_size - 1];
+              for e in chunk.iter_mut().rev().skip(1) {
+                prev_partial *= u;
+                *e += prev_partial;
+              }
+            });
+          result
+        };      
+
+      let _compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
+          let d = f.len();
+
+          // Compute h(x) = f(x)/(x - u)
+          let mut h = vec![E::Scalar::ZERO; d];
+          for i in (1..d).rev() {
+            h[i - 1] = f[i] + h[i] * u;
+          }
 
         h
       };
 
-      let h = compute_witness_polynomial(f, u);
+      //let h = compute_witness_polynomial(f, u);
+      let h = &div_by_monomial(f, u, 1<<10);
 
       E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
     };
