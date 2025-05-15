@@ -11,6 +11,9 @@ pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
   for i in 0..10 {
     println!("scalar_bytes[{}]: {:?}", i, scalar_bytes[i]);
   }
+  for i in 0..10 {
+    println!("Base {}: {:?}", i, bases[i]);
+  }
 
   blitzar::compute::compute_bn254_g1_uncompressed_commitments_with_halo2_generators(
     &mut blitzar_commitments,
@@ -36,6 +39,10 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
           println!("  Scalar {}: {:?}", j, bytes);
       }
   }
+  for (i, base) in bases.iter().take(10).enumerate() {
+    println!("Base {}: {:?}", i, base);
+  }
+
   let scalars_table: Vec<blitzar::sequence::Sequence<'_>> =
     scalar_bytes.iter().map(|s| s.into()).collect();
 
