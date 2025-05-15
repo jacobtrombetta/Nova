@@ -979,11 +979,19 @@ where
       span_.exit();
 
       let span = span!(Level::DEBUG, "kzg_open_batch batch_commit").entered();
-      let r = vec![E::Scalar::ZERO; h.len()];
-      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &r)
-        .iter()
-        .map(|i| i.comm.affine())
-        .collect();
+      //let r = vec![E::Scalar::ZERO; h.len()];
+      //let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &r)
+      //  .iter()
+      //  .map(|i| i.comm.affine())
+      //  .collect();
+
+      let w: Vec<G1Affine<E>> = (0..h.len())
+        .into_iter()
+        .map(|i| {
+          let c = E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine();
+          c
+        })
+        .collect::<Vec<G1Affine<E>>>();
       span.exit();
       //println!("w_new: {:?}", w_new);
 
