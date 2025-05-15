@@ -987,6 +987,21 @@ where
         println!("h_new != h");
       }
 
+
+      /*
+        fn batch_commit(
+          ck: &Self::CommitmentKey,
+          v: &[Vec<E::Scalar>],
+          r: &[E::Scalar],
+        ) -> Vec<Self::Commitment> {
+          assert!(v.len() == r.len());
+          v.par_iter()
+            .zip(r.par_iter())
+            .map(|(v_i, r_i)| Self::commit(ck, v_i, r_i))
+            .collect()
+        }
+      */
+
       let r = vec![E::Scalar::ZERO; h_new.len()];
       let w_batch: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h_new, r.as_slice())
         .iter()
@@ -1010,8 +1025,7 @@ where
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_iter()
         .map(|i| {
-          let c = E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine();
-          c
+          E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine()
         })
         .collect::<Vec<G1Affine<E>>>();
       span.exit();
@@ -1036,9 +1050,9 @@ where
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
-      let _d_0 = Self::verifier_second_challenge(&w, transcript);
+      let _d_0 = Self::verifier_second_challenge(&w_batch, transcript);
 
-      (w, v)
+      (w_batch, v)
     };
 
     ///// END helper closures //////////
