@@ -916,6 +916,8 @@ where
           for i in 0..5 {
             if h[i] != h_old[i] {
               println!("ERROR 1 - h[i] != h_old[i] : {}", i);
+              println!("h[i]: {:?}", h[i]);
+              println!("h_old[i]: {:?}", h_old[i]);
             }
           }
 
@@ -953,6 +955,8 @@ where
           for i in 0..5 {
             if h[i] != h_old[i] {
               println!("ERROR 2 - h[i] != h_old[i] : {}", i);
+              println!("h[i]: {:?}", h[i]);
+              println!("h_old[i]: {:?}", h_old[i]);
             }
           }
 
