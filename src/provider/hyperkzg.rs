@@ -892,7 +892,7 @@ where
 
       // Now open B at u0, ..., u_{t-1}
       let span_ = span!(Level::DEBUG, "kzg_open_batch kzg_open").entered();
-      let _ = u
+      let w = u
         .into_iter()
         .map(|ui| {
           //kzg_open(&B, *ui)
@@ -905,6 +905,8 @@ where
           let h: Vec<E::Scalar> = div_by_monomial(&B, *ui, 1 << 10)[1..].to_vec();
           span.exit();
 
+          println!("h: {:?}", h);
+
           let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
           let c = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
           span.exit();
@@ -912,6 +914,7 @@ where
         })
         .collect::<Vec<G1Affine<E>>>();
       span_.exit();
+      println!("w: {:?}", w);
 
       let span_ = span!(Level::DEBUG, "kzg_open_batch kzg_open split out commits").entered();
       let h = u
@@ -924,7 +927,7 @@ where
           span.exit();
           
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
-          let h: Vec<E::Scalar> = div_by_monomial(&B, *ui, 1 << 10)[1..].to_vec();
+          let hi: Vec<E::Scalar> = div_by_monomial(&B, *ui, 1 << 10)[1..].to_vec();
           span.exit();
 
           //let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
@@ -932,17 +935,20 @@ where
           //span.exit();
           //c
 
-          h
+          println!("hi: {:?}", hi);
+
+          hi
         })
         .collect::<Vec<Vec<E::Scalar>>>();
       span_.exit();
 
       let span = span!(Level::DEBUG, "kzg_open_batch batch_commit").entered();
-      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &[E::Scalar::ZERO; 3])
+      let w_new: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &[E::Scalar::ZERO; 3])
         .iter()
         .map(|i| i.comm.affine())
         .collect();
       span.exit();
+      println!("w_new: {:?}", w_new);
 
 
       // The prover computes the challenge to keep the transcript in the same
