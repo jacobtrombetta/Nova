@@ -735,7 +735,7 @@ where
         result
       };
 
-    let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
+    let _compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
       let d = f.len();
 
       // Compute h(x) = f(x)/(x - u)
@@ -940,17 +940,17 @@ where
         .map(|ui| {
           //kzg_open(&B, *ui)
 
-          let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
-          let h = compute_witness_polynomial(&B, *ui);
-          span.exit();
+          //let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
+          //let h = compute_witness_polynomial(&B, *ui);
+          //span.exit();
           
-          /*
+          
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
           let hi = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
 
           let h = hi.to_vec();
-           */
+          
           
           /*
           println!("h.len(): {:?}", h.len());
