@@ -979,11 +979,26 @@ where
       span_.exit();
 
       let span = span!(Level::DEBUG, "kzg_open_batch batch_commit").entered();
-      //let r = vec![E::Scalar::ZERO; h.len()];
-      //let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &r)
-      //  .iter()
-      //  .map(|i| i.comm.affine())
-      //  .collect();
+      let h_new = h.clone();
+      let r = vec![E::Scalar::ZERO; h_new.len()];
+      let w_batch: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h_new, r.as_slice())
+        .iter()
+        .map(|i| i.comm.affine())
+        .collect();
+
+    /*
+    // Example
+    let com: Vec<G1Affine<E>> = (1..polys.len())
+      .iter()
+      .map(|i| E::CE::commit(ck, &polys[i], &E::Scalar::ZERO).comm.affine())
+      .collect();
+
+    let r = vec![E::Scalar::ZERO; ell - 1];
+    let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
+      .iter()
+      .map(|i| i.comm.affine())
+      .collect();
+    */
 
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_iter()
@@ -1002,6 +1017,14 @@ where
       //     println!("w_new[i]: {:?}", w_new[i]);
       //   }
       // }
+
+      for i in 0..w.len() {
+        if w[i] != w_batch[i] {
+          println!("ERROR 4 - w[i] != w_batch[i] : {}", i);
+          println!("w[i]:       {:?}", w[i]);
+          println!("w_batch[i]: {:?}", w_batch[i]);
+        }
+      }
 
 
       // The prover computes the challenge to keep the transcript in the same
