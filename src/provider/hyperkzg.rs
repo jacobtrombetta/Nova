@@ -905,7 +905,7 @@ where
           let h = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
 
-          let h = h[1..].to_vec();
+          let h = h.to_vec();
 
           println!("h.len(): {:?}", h.len());
           println!("h_old.len(): {:?}", h_old.len());
@@ -944,9 +944,9 @@ where
           let hi = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
 
-          let h = hi[1..].to_vec();
+          let h = hi.to_vec();
           
-          println!("h.len(): {:?}", hi.len());
+          println!("h.len(): {:?}", h.len());
           println!("h_old.len(): {:?}", h_old.len());
 
           if h.len() != h_old.len() {
