@@ -897,9 +897,9 @@ where
         .map(|ui| {
           //kzg_open(&B, *ui)
 
-          let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
-          let h_old = compute_witness_polynomial(&B, *ui);
-          span.exit();
+          //let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
+          //let h_old = compute_witness_polynomial(&B, *ui);
+          //span.exit();
           
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
           let h = &div_by_monomial(&B, *ui, 1 << 10)[1..];
@@ -907,6 +907,7 @@ where
 
           let h = h.to_vec();
 
+          /*
           println!("h.len(): {:?}", h.len());
           println!("h_old.len(): {:?}", h_old.len());
 
@@ -920,9 +921,10 @@ where
               println!("h_old[i]: {:?}", h_old[i]);
             }
           }
+          */
 
           let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
-          let c = E::CE::commit(ck, &h_old, &E::Scalar::ZERO).comm.affine();
+          let c = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
           span.exit();
           c
         })
@@ -978,13 +980,13 @@ where
       span.exit();
       println!("w_new: {:?}", w_new);
 
-      for i in 0..w.len() {
-        if w[i] != w_new[i] {
-          println!("ERROR 3 - w[i] != w_new[i] : {}", i);
-          println!("w[i]: {:?}", w[i]);
-          println!("w_new[i]: {:?}", w_new[i]);
-        }
-      }
+      // for i in 0..w.len() {
+      //   if w[i] != w_new[i] {
+      //     println!("ERROR 3 - w[i] != w_new[i] : {}", i);
+      //     println!("w[i]: {:?}", w[i]);
+      //     println!("w_new[i]: {:?}", w_new[i]);
+      //   }
+      // }
 
 
       // The prover computes the challenge to keep the transcript in the same
