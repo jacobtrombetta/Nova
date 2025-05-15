@@ -898,14 +898,16 @@ where
           //kzg_open(&B, *ui)
 
           let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
-          let _ = compute_witness_polynomial(&B, *ui);
+          let h_old = compute_witness_polynomial(&B, *ui);
           span.exit();
           
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
           let h: Vec<E::Scalar> = div_by_monomial(&B, *ui, 1 << 10)[1..].to_vec();
           span.exit();
 
-          println!("h: {:?}", h);
+          if h != h_old {
+            println!("ERROR - h != h_old");
+          }
 
           let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
           let c = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
@@ -934,8 +936,6 @@ where
           //let c = E::CE::commit(ck, h, &E::Scalar::ZERO).comm.affine();
           //span.exit();
           //c
-
-          println!("hi: {:?}", hi);
 
           hi
         })
