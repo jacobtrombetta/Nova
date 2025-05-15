@@ -1019,6 +1019,11 @@ where
         }
       */
 
+      println!("");
+      println!("");
+      println!("BATCH COMMIT");
+      println!("");
+      println!("");
       let r = vec![E::Scalar::ZERO; h_new.len()];
       let w_batch: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h_new, r.as_slice())
         .iter()
@@ -1039,6 +1044,11 @@ where
       .collect();
     */
 
+      println!("");
+      println!("");
+      println!("COMMIT");
+      println!("");
+      println!("");
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_iter()
         .map(|i| {
@@ -1046,6 +1056,10 @@ where
         })
         .collect::<Vec<G1Affine<E>>>();
       span.exit();
+      println!("");
+      println!("");
+      println!("");
+      println!("");
       //println!("w_new: {:?}", w_new);
 
       // for i in 0..w.len() {
