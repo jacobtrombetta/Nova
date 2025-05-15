@@ -486,8 +486,8 @@ where
     let h = <E::GE as DlogGroup>::group(&ck.h);
 
     E::GE::batch_vartime_multiscalar_mul(v, &ck.ck[..max])
-      .iter()
-      .zip(r.iter())
+      .par_iter()
+      .zip(r.par_iter())
       .map(|(commit, r_i)| Commitment {
         comm: *commit + (h * r_i),
       })
@@ -834,6 +834,14 @@ where
         })
         .collect::<Vec<G1Affine<E>>>();
 
+      /*
+      This passes tests but has a VerificationError { error: "Inner product proof of MLE evaluations failed" }
+      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h_new, r.as_slice())
+        .iter()
+        .map(|i| i.comm.affine())
+        .collect();
+      */
+
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
       let _d_0 = Self::verifier_second_challenge(&w, transcript);
@@ -868,7 +876,7 @@ where
     // Compute commitments in parallel
     let r = vec![E::Scalar::ZERO; ell - 1];
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
-      .iter()
+      .par_iter()
       .map(|i| i.comm.affine())
       .collect();
 
