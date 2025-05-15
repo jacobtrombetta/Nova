@@ -469,6 +469,7 @@ where
     assert!(ck.ck.len() >= v.len());
 
     println!("v.len(): {}", v.len());
+    println!("v[0]: {:?}", v[0]);
     
     let commit = E::GE::vartime_multiscalar_mul(v, &ck.ck[..v.len()]);
     println!("commit: {:?}", commit);
@@ -493,6 +494,7 @@ where
     assert!(ck.ck.len() >= max);
 
     println!("max: {}", max);
+    println!("v[0][0]: {:?}", v[0][0]);
 
     let h = <E::GE as DlogGroup>::group(&ck.h);
 
