@@ -905,8 +905,13 @@ where
           let h = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
 
-          if h != h_old {
-            println!("ERROR 1 - h != h_old");
+          if h.len() != h_old.len() {
+            println!("ERROR 1 - h.len() != h_old.len()");
+          }
+          for i in 0..h.len() {
+            if h[i] != h_old[i] {
+              println!("ERROR 1 - h[i] != h_old[i] : {}", i);
+            }
           }
 
           let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
@@ -932,8 +937,13 @@ where
           let hi = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
 
-          if hi != h_old {
-            println!("ERROR 2 - hi != h_old");
+          if hi.len() != h_old.len() {
+            println!("ERROR 2 - hi.len() != h_old.len()");
+          }
+          for i in 0..hi.len() {
+            if hi[i] != h_old[i] {
+              println!("ERROR 2 - hi[i] != h_old[i] : {}", i);
+            }
           }
 
           //let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
