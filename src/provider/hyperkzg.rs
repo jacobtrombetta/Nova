@@ -836,7 +836,8 @@ where
 
       /*
       This passes tests but has a VerificationError { error: "Inner product proof of MLE evaluations failed" }
-      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h_new, r.as_slice())
+      let r = vec![E::Scalar::ZERO; h.len()];
+      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, r.as_slice())
         .iter()
         .map(|i| i.comm.affine())
         .collect();
