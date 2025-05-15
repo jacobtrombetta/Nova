@@ -761,7 +761,7 @@ where
       };
 
       //let h = compute_witness_polynomial(f, u);
-      let h = &div_by_monomial(f, u, 1<<10);
+      let h = &div_by_monomial(f, u, 1<<10)[1..];
 
       E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine()
     };
