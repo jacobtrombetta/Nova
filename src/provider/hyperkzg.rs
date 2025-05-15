@@ -960,7 +960,7 @@ where
             }
           }
 
-          h
+          h_old
 
           //let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
           //let c = E::CE::commit(ck, h, &E::Scalar::ZERO).comm.affine();
