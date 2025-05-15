@@ -980,6 +980,13 @@ where
 
       let span = span!(Level::DEBUG, "kzg_open_batch batch_commit").entered();
       let h_new = h.clone();
+
+      if h_new == h {
+        println!("h_new == h");
+      } else {
+        println!("h_new != h");
+      }
+
       let r = vec![E::Scalar::ZERO; h_new.len()];
       let w_batch: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h_new, r.as_slice())
         .iter()
