@@ -735,7 +735,7 @@ where
         result
       };
 
-    let compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
+    let _compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
       let d = f.len();
 
       // Compute h(x) = f(x)/(x - u)
@@ -891,6 +891,7 @@ where
       span_.exit();
 
       // Now open B at u0, ..., u_{t-1}
+      /*
       let span_ = span!(Level::DEBUG, "kzg_open_batch kzg_open").entered();
       let w = u
         .into_iter()
@@ -931,6 +932,7 @@ where
         .collect::<Vec<G1Affine<E>>>();
       span_.exit();
       println!("w: {:?}", w);
+       */
 
       let span_ = span!(Level::DEBUG, "kzg_open_batch kzg_open split out commits").entered();
       let h = u
@@ -938,9 +940,9 @@ where
         .map(|ui| {
           //kzg_open(&B, *ui)
 
-          let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
-          let h_old = compute_witness_polynomial(&B, *ui);
-          span.exit();
+          //let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
+          //let h_old = compute_witness_polynomial(&B, *ui);
+          //span.exit();
           
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
           let hi = &div_by_monomial(&B, *ui, 1 << 10)[1..];
@@ -948,6 +950,7 @@ where
 
           let h = hi.to_vec();
           
+          /*
           println!("h.len(): {:?}", h.len());
           println!("h_old.len(): {:?}", h_old.len());
 
@@ -961,8 +964,9 @@ where
               println!("h_old[i]: {:?}", h_old[i]);
             }
           }
+           */
 
-          h_old
+          h
 
           //let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
           //let c = E::CE::commit(ck, h, &E::Scalar::ZERO).comm.affine();
@@ -973,12 +977,12 @@ where
       span_.exit();
 
       let span = span!(Level::DEBUG, "kzg_open_batch batch_commit").entered();
-      let w_new: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &[E::Scalar::ZERO; 3])
+      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, &[E::Scalar::ZERO; 3])
         .iter()
         .map(|i| i.comm.affine())
         .collect();
       span.exit();
-      println!("w_new: {:?}", w_new);
+      //println!("w_new: {:?}", w_new);
 
       // for i in 0..w.len() {
       //   if w[i] != w_new[i] {
