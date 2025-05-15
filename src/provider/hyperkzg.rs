@@ -827,12 +827,11 @@ where
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<Vec<E::Scalar>>>();
       
-      let w: Vec<G1Affine<E>> = (0..h.len())
-        .into_iter()
-        .map(|i| {
-          E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine()
-        })
-        .collect::<Vec<G1Affine<E>>>();
+      let r = vec![E::Scalar::ZERO; h.len()];
+      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, r.as_slice())
+        .iter()
+        .map(|i| i.comm.affine())
+        .collect();
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
