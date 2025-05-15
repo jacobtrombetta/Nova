@@ -902,11 +902,11 @@ where
           span.exit();
           
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
-          let h: Vec<E::Scalar> = div_by_monomial(&B, *ui, 1 << 10)[1..].to_vec();
+          let h = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
 
           if h != h_old {
-            println!("ERROR - h != h_old");
+            println!("ERROR 1 - h != h_old");
           }
 
           let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
@@ -925,19 +925,23 @@ where
           //kzg_open(&B, *ui)
 
           let span = span!(Level::DEBUG, "kzg_open_batch compute_witness_polynomial").entered();
-          let _ = compute_witness_polynomial(&B, *ui);
+          let h_old = compute_witness_polynomial(&B, *ui);
           span.exit();
           
           let span = span!(Level::DEBUG, "kzg_open_batch div_by_monomial").entered();
-          let hi: Vec<E::Scalar> = div_by_monomial(&B, *ui, 1 << 10)[1..].to_vec();
+          let hi = &div_by_monomial(&B, *ui, 1 << 10)[1..];
           span.exit();
+
+          if hi != h_old {
+            println!("ERROR 2 - hi != h_old");
+          }
 
           //let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
           //let c = E::CE::commit(ck, h, &E::Scalar::ZERO).comm.affine();
           //span.exit();
           //c
 
-          hi
+          hi.to_vec()
         })
         .collect::<Vec<Vec<E::Scalar>>>();
       span_.exit();
