@@ -922,7 +922,7 @@ where
           }
 
           let span = span!(Level::DEBUG, "kzg_open_batch commit").entered();
-          let c = E::CE::commit(ck, &h, &E::Scalar::ZERO).comm.affine();
+          let c = E::CE::commit(ck, &h_old, &E::Scalar::ZERO).comm.affine();
           span.exit();
           c
         })
