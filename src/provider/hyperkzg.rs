@@ -827,27 +827,45 @@ where
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<Vec<E::Scalar>>>();
       
+      /*
+      println!("");
+      println!("This batch commit does not work");
+      println!("");
+      println!("commit");
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_par_iter()
         .map(|i| {
           E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine()
         })
         .collect::<Vec<G1Affine<E>>>();
-
-      /*
-      This passes tests but has a VerificationError { error: "Inner product proof of MLE evaluations failed" }
+      println!("");
+      println!("batch_commit");
+      println!("");
+      */
+      // This passes tests but has a VerificationError { error: "Inner product proof of MLE evaluations failed" }
       let r = vec![E::Scalar::ZERO; h.len()];
-      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, r.as_slice())
+      let w_batch: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, r.as_slice())
         .iter()
         .map(|i| i.comm.affine())
         .collect();
-      */
+
+      /*
+      println!("");
+      println!("");
+      for i in 0..3 {
+        println!("w[{}]:       {:?}", i, w[i]);
+        println!("w_batch[{}]: {:?}", i, w_batch[i]);
+      }
+      println!("");
+      println!("");
+      println!("");
+       */
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
-      let _d_0 = Self::verifier_second_challenge(&w, transcript);
+      let _d_0 = Self::verifier_second_challenge(&w_batch, transcript);
 
-      (w, v)
+      (w_batch, v)
     };
 
     ///// END helper closures //////////
@@ -875,11 +893,37 @@ where
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
+    //println!("");
+    //println!("THIS batch_commit works");
+    //println!("");
+    //println!("batch_commit");
     let r = vec![E::Scalar::ZERO; ell - 1];
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
-      .par_iter()
+      .iter()
       .map(|i| i.comm.affine())
       .collect();
+
+    /*
+    println!("");
+    println!("commit");
+    println!("");
+    let com_2: Vec<G1Affine<E>> = (1..polys.len())
+        .into_iter()
+        .map(|i| {
+          E::CE::commit(ck, &polys[i], &E::Scalar::ZERO).comm.affine()
+        })
+        .collect::<Vec<G1Affine<E>>>();
+
+    println!("");
+    println!("");
+    for i in 0..3 {
+      println!("com[{}]:   {:?}", i, com[i]);
+      println!("com_2[{}]: {:?}", i, com_2[i]);
+    }
+    println!("");
+    println!("");
+    println!("");
+     */
 
     // Phase 2
     // We do not need to add x to the transcript, because in our context x was obtained from the transcript.
