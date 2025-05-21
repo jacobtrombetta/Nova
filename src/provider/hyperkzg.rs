@@ -832,23 +832,28 @@ where
       println!("This batch commit does not work");
       println!("");
       println!("commit");
+      */
+
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_par_iter()
         .map(|i| {
           E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine()
         })
         .collect::<Vec<G1Affine<E>>>();
+      
+      /*
       println!("");
       println!("batch_commit");
       println!("");
       */
       // This passes tests but has a VerificationError { error: "Inner product proof of MLE evaluations failed" }
+      /*
       let r = vec![E::Scalar::ZERO; h.len()];
       let w_batch: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, r.as_slice())
         .iter()
         .map(|i| i.comm.affine())
         .collect();
-
+      */
       /*
       println!("");
       println!("");
@@ -863,9 +868,9 @@ where
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
-      let _d_0 = Self::verifier_second_challenge(&w_batch, transcript);
+      let _d_0 = Self::verifier_second_challenge(&w, transcript);
 
-      (w_batch, v)
+      (w, v)
     };
 
     ///// END helper closures //////////
