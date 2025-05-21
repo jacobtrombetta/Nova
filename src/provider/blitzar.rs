@@ -8,7 +8,7 @@ use tracing::{span, Level};
 pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
   let mut blitzar_commitments = vec![Point::default(); 1];
 
-  let scalar_bytes: Vec<[u8; 32]> = scalars.par_iter().map(|s| s.to_bytes()).collect();
+  let scalar_bytes: Vec<[u8; 32]> = scalars.iter().map(|s| s.to_bytes()).collect();
 
   println!("scalars.len(): {}", scalars.len());
   println!("bases.len(): {}", bases.len());
