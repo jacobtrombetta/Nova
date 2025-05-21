@@ -2,6 +2,7 @@
 use blitzar;
 use halo2curves::bn256::{Fr as Scalar, G1Affine as Affine, G1 as Point};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use tracing::{span, Level};
 
 /// A trait that provides the ability to perform multi-scalar multiplication in variable time
 pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
