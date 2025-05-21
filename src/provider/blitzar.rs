@@ -44,7 +44,7 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
   for i in 0..scalars.len() {
     println!("scalars[{}].len(): {}", i, scalars[i].len());
   }
-  for (i, scalar_row) in scalar_bytes.iter().take(2).enumerate() {
+  for (i, scalar_row) in scalar_bytes.iter().take(3).enumerate() {
       println!("Row {}:", i);
       for (j, bytes) in scalar_row.iter().take(2).enumerate() {
           println!("  Scalar {}: {:?}", j, bytes);
