@@ -694,8 +694,11 @@ where
     point: &[E::Scalar],
     _eval: &E::Scalar,
   ) -> Result<Self::EvaluationArgument, NovaError> {
+    let span = span!(Level::DEBUG, "to_vec").entered();
     let x: Vec<E::Scalar> = point.to_vec();
+    span.exit();
 
+    let span = span!(Level::DEBUG, "closures").entered();
     //////////////// begin helper closures //////////
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
       // On input f(x) and u compute the witness polynomial used to prove
@@ -884,6 +887,7 @@ where
     };
 
     ///// END helper closures //////////
+    span.exit();
 
     let ell = x.len();
     let n = hat_P.len();
@@ -892,6 +896,7 @@ where
     // Phase 1  -- create commitments com_1, ..., com_\ell
     // We do not compute final Pi (and its commitment) as it is constant and equals to 'eval'
     // also known to verifier, so can be derived on its side as well
+    let span = span!(Level::DEBUG, "phase 1").entered();
     let mut polys: Vec<Vec<E::Scalar>> = Vec::new();
     polys.push(hat_P.to_vec());
     for i in 0..ell - 1 {
@@ -905,6 +910,7 @@ where
 
       polys.push(Pi);
     }
+    span.exit();
 
     // We do not need to commit to the first polynomial as it is already committed.
     // Compute commitments in parallel
