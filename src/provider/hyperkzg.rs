@@ -33,6 +33,7 @@ use num_traits::ToPrimitive;
 use rand_core::OsRng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use tracing::{span, Level};
 
 /// Alias to points on G1 that are in preprocessed form
 type G1Affine<E> = <<E as Engine>::GE as DlogGroup>::AffineGroupElement;
@@ -808,6 +809,7 @@ where
 
       // The verifier needs f_i(u_j), so we compute them here
       // (V will compute B(u_j) itself)
+      let span = span!(Level::DEBUG, "poly_evals").entered();
       let mut v = vec![[E::Scalar::ZERO; 3]; k];
       v.par_iter_mut().zip_eq(f).for_each(|(v_j, f)| {
         // for each poly f
@@ -817,15 +819,20 @@ where
           *v_ij = poly_eval(f, u[i]);
         });
       });
+      span.exit();
 
+      let span = span!(Level::DEBUG, "batch challange and polynomial").entered();
       let q = Self::get_batch_challenge(&v, transcript);
       let B = kzg_compute_batch_polynomial(f, q);
+      span.exit();
 
       // Now open B at u0, ..., u_{t-1}
+      let span = span!(Level::DEBUG, "kzg_open returning scalars").entered();
       let h = u
         .into_par_iter()
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<Vec<E::Scalar>>>();
+      span.exit();
       
       /*
       println!("");
@@ -834,12 +841,14 @@ where
       println!("commit");
       */
 
+      let span = span!(Level::DEBUG, "single parallel commits").entered();
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_par_iter()
         .map(|i| {
           E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine()
         })
         .collect::<Vec<G1Affine<E>>>();
+      span.exit();
       
       /*
       println!("");
