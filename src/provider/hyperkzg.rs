@@ -694,11 +694,8 @@ where
     point: &[E::Scalar],
     _eval: &E::Scalar,
   ) -> Result<Self::EvaluationArgument, NovaError> {
-    let span = span!(Level::DEBUG, "to_vec").entered();
     let x: Vec<E::Scalar> = point.to_vec();
-    span.exit();
 
-    let span = span!(Level::DEBUG, "closures").entered();
     //////////////// begin helper closures //////////
     let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
       // On input f(x) and u compute the witness polynomial used to prove
@@ -887,7 +884,6 @@ where
     };
 
     ///// END helper closures //////////
-    span.exit();
 
     let ell = x.len();
     let n = hat_P.len();
@@ -918,13 +914,13 @@ where
     //println!("THIS batch_commit works");
     //println!("");
     //println!("batch_commit");
-    let span = span!(Level::DEBUG, "create r").entered();
+    let span = span!(Level::DEBUG, "batch_commit").entered();
     let r = vec![E::Scalar::ZERO; ell - 1];
-    span.exit();
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
       .iter()
       .map(|i| i.comm.affine())
       .collect();
+    span.exit();
 
     /*
     println!("");
@@ -955,7 +951,9 @@ where
     let u = [r, -r, r * r];
 
     // Phase 3 -- create response
+    let span = span!(Level::DEBUG, "kzg_open_batch").entered();
     let (w, v) = kzg_open_batch(&polys, &u, transcript);
+    span.exit();
 
     Ok(EvaluationArgument {
       com,
