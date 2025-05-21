@@ -835,13 +835,11 @@ where
         .collect::<Vec<Vec<E::Scalar>>>();
       span.exit();
       
-      /*
+      
       println!("");
       println!("This batch commit does not work");
       println!("");
       println!("commit");
-      */
-
       let span = span!(Level::DEBUG, "single parallel commits").entered();
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_par_iter()
@@ -851,20 +849,16 @@ where
         .collect::<Vec<G1Affine<E>>>();
       span.exit();
       
-      /*
       println!("");
       println!("batch_commit");
       println!("");
-      */
+      
       // This passes tests but has a VerificationError { error: "Inner product proof of MLE evaluations failed" }
-      /*
       let r = vec![E::Scalar::ZERO; h.len()];
       let w_batch: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, r.as_slice())
         .iter()
         .map(|i| i.comm.affine())
         .collect();
-      */
-      /*
       println!("");
       println!("");
       for i in 0..3 {
@@ -874,7 +868,6 @@ where
       println!("");
       println!("");
       println!("");
-       */
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
