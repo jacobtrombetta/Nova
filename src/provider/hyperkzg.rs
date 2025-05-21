@@ -830,7 +830,7 @@ where
       // Now open B at u0, ..., u_{t-1}
       let span = span!(Level::DEBUG, "kzg_open returning scalars").entered();
       let h = u
-        .into_iter()
+        .into_par_iter()
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<Vec<E::Scalar>>>();
       span.exit();
@@ -842,7 +842,7 @@ where
       println!("commit");
       let span = span!(Level::DEBUG, "single parallel commits").entered();
       let w: Vec<G1Affine<E>> = (0..h.len())
-        .into_iter()
+        .into_par_iter()
         .map(|i| {
           E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine()
         })
