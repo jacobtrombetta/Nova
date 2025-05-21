@@ -684,6 +684,7 @@ where
     (pk, vk)
   }
 
+  #[tracing::instrument(level = "debug", skip_all)]
   fn prove(
     ck: &CommitmentKey<E>,
     _pk: &Self::ProverKey,
