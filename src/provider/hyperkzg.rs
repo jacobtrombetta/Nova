@@ -918,7 +918,9 @@ where
     //println!("THIS batch_commit works");
     //println!("");
     //println!("batch_commit");
+    let span = span!(Level::DEBUG, "create r").entered();
     let r = vec![E::Scalar::ZERO; ell - 1];
+    span.exit();
     let com: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &polys[1..], r.as_slice())
       .iter()
       .map(|i| i.comm.affine())
