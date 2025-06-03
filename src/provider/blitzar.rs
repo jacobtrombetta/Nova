@@ -10,14 +10,6 @@ pub fn vartime_multiscalar_mul(scalars: &[Scalar], bases: &[Affine]) -> Point {
 
   let scalar_bytes: Vec<[u8; 32]> = scalars.par_iter().map(|s| s.to_bytes()).collect();
 
-  println!("scalars.len(): {}", scalars.len());
-  println!("bases.len(): {}", bases.len());
-  for i in 0..2 {
-    println!("scalar_bytes[{}]: {:?}", i, scalar_bytes[i]);
-  }
-  for i in 0..2 {
-    println!("Base {}: {:?}", i, bases[i]);
-  }
 
   blitzar::compute::compute_bn254_g1_uncompressed_commitments_with_halo2_generators(
     &mut blitzar_commitments,
@@ -39,20 +31,6 @@ pub fn batch_vartime_multiscalar_mul(scalars: &[Vec<Scalar>], bases: &[Affine]) 
     .collect();
   span.exit();
 
-  println!("scalars.len(): {}", scalars.len());
-  println!("bases.len(): {}", bases.len());
-  for i in 0..scalars.len() {
-    println!("scalars[{}].len(): {}", i, scalars[i].len());
-  }
-  for (i, scalar_row) in scalar_bytes.iter().take(3).enumerate() {
-      println!("Row {}:", i);
-      for (j, bytes) in scalar_row.iter().take(2).enumerate() {
-          println!("  Scalar {}: {:?}", j, bytes);
-      }
-  }
-  for i in 0..3 {
-    println!("Base {}: {:?}", i, bases[i]);
-  }
 
   let span = span!(Level::DEBUG, "scalars_table").entered();
   let scalars_table: Vec<blitzar::sequence::Sequence<'_>> =
@@ -178,6 +156,34 @@ mod tests {
   }
 
   #[test]
+  fn test_batch_vartime_multiscalar_mul_large() {
+    let mut rng = rand::thread_rng();
+    let batch_len = 8;
+    let sample_len = 1<<17 + 1;
+
+    let scalars: Vec<Vec<Scalar>> = (0..batch_len)
+      .map(|_| (0..sample_len).map(|_| Scalar::random(&mut rng)).collect())
+      .collect();
+
+    let bases: Vec<Affine> = (0..sample_len).map(|_| Affine::random(&mut rng)).collect();
+
+    let result = batch_vartime_multiscalar_mul(&scalars, &bases);
+
+    let expected: Vec<Point> = scalars
+      .iter()
+      .map(|scalar_row| {
+        scalar_row
+          .iter()
+          .enumerate()
+          .map(|(i, scalar)| bases[i] * scalar)
+          .sum()
+      })
+      .collect();
+
+    assert_eq!(result, expected);
+  }  
+
+  #[test]
   fn test_vartime_multiscalar_mul_with_msm_best() {
     let mut rng = rand::thread_rng();
     let sample_len = 100;
@@ -195,8 +201,8 @@ mod tests {
   #[test]
   fn test_batch_vartime_multiscalar_mul_with_msm_best() {
     let mut rng = rand::thread_rng();
-    let batch_len = 20;
-    let sample_len = 100;
+    let batch_len = 8;
+    let sample_len = 1<<17 + 1;
 
     let scalars: Vec<Vec<Scalar>> = (0..batch_len)
       .map(|_| (0..sample_len).map(|_| Scalar::random(&mut rng)).collect())
