@@ -711,7 +711,8 @@ where
       // the quotient of f(x)/(x-u) and (f(x) - f(v))/(x-u) is the
       // same.  One advantage is that computing f(u) could be decoupled
       // from kzg_open, it could be done later or separate from computing W.
-      let div_by_monomial = |f: &[E::Scalar], u: E::Scalar, target_chunks: usize| -> Vec<E::Scalar> {
+      let div_by_monomial =
+        |f: &[E::Scalar], u: E::Scalar, target_chunks: usize| -> Vec<E::Scalar> {
           assert!(!f.is_empty());
           let target_chunk_size = f.len() / target_chunks;
           let nu = target_chunk_size.max(1).ilog2();
@@ -748,22 +749,22 @@ where
               }
             });
           result
-        };      
+        };
 
       let _compute_witness_polynomial = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
-          let d = f.len();
+        let d = f.len();
 
-          // Compute h(x) = f(x)/(x - u)
-          let mut h = vec![E::Scalar::ZERO; d];
-          for i in (1..d).rev() {
-            h[i - 1] = f[i] + h[i] * u;
-          }
+        // Compute h(x) = f(x)/(x - u)
+        let mut h = vec![E::Scalar::ZERO; d];
+        for i in (1..d).rev() {
+          h[i - 1] = f[i] + h[i] * u;
+        }
 
         h
       };
 
       //let h = compute_witness_polynomial(f, u);
-      let h = &div_by_monomial(f, u, 1<<10)[1..];
+      let h = &div_by_monomial(f, u, 1 << 10)[1..];
 
       h.to_vec()
     };
@@ -773,21 +774,19 @@ where
                           transcript: &mut <E as Engine>::TE|
      -> (Vec<G1Affine<E>>, Vec<[E::Scalar; 3]>) {
       let poly_eval = |f: &[E::Scalar], u: E::Scalar| -> E::Scalar {
-          // Horner's method: evaluate from highest degree to lowest
-          let mut acc = E::Scalar::ZERO;
-          for &fi in f.iter().rev() {
-              acc = acc * u + fi;
-          }
-          acc
+        // Horner's method: evaluate from highest degree to lowest
+        let mut acc = E::Scalar::ZERO;
+        for &fi in f.iter().rev() {
+          acc = acc * u + fi;
+        }
+        acc
       };
 
       let scalar_vector_muladd = |a: &mut Vec<E::Scalar>, v: &Vec<E::Scalar>, s: E::Scalar| {
         assert!(a.len() >= v.len());
-        a.par_iter_mut()
-            .zip(v.par_iter())
-            .for_each(|(a_i, v_i)| {
-                *a_i += s * *v_i;
-            });
+        a.par_iter_mut().zip(v.par_iter()).for_each(|(a_i, v_i)| {
+          *a_i += s * *v_i;
+        });
       };
 
       let kzg_compute_batch_polynomial = |f: &[Vec<E::Scalar>], q: E::Scalar| -> Vec<E::Scalar> {
@@ -834,18 +833,14 @@ where
         .map(|ui| kzg_open(&B, *ui))
         .collect::<Vec<Vec<E::Scalar>>>();
       span.exit();
-      
-      
+
       let span = span!(Level::DEBUG, "single parallel commits").entered();
       let w: Vec<G1Affine<E>> = (0..h.len())
         .into_par_iter()
-        .map(|i| {
-          E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine()
-        })
+        .map(|i| E::CE::commit(ck, &h[i], &E::Scalar::ZERO).comm.affine())
         .collect::<Vec<G1Affine<E>>>();
       span.exit();
-      
-      
+
       /*
       let span = span!(Level::DEBUG, "batch_commit").entered();
       let r = vec![E::Scalar::ZERO; h.len()];
