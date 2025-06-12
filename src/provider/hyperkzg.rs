@@ -695,7 +695,7 @@ where
     let x: Vec<E::Scalar> = point.to_vec();
 
     //////////////// begin helper closures //////////
-    let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> G1Affine<E> {
+    let kzg_open = |f: &[E::Scalar], u: E::Scalar| -> Vec<E::Scalar> {
       // On input f(x) and u compute the witness polynomial used to prove
       // that f(u) = v. The main part of this is to compute the
       // division (f(x) - f(u)) / (x - u), but we don't use a general
@@ -752,7 +752,7 @@ where
       let target_chunks = 1 << 10; // We want to divide into 1024 chunks
       let h = &div_by_monomial(f, u, target_chunks)[1..];
 
-      E::CE::commit(ck, h, &E::Scalar::ZERO).comm.affine()
+      h.to_vec()
     };
 
     let kzg_open_batch = |f: &[Vec<E::Scalar>],
@@ -812,10 +812,16 @@ where
       let B = kzg_compute_batch_polynomial(f, q);
 
       // Now open B at u0, ..., u_{t-1}
-      let w = u
+      let h = u
         .into_par_iter()
         .map(|ui| kzg_open(&B, *ui))
-        .collect::<Vec<G1Affine<E>>>();
+        .collect::<Vec<Vec<E::Scalar>>>();
+
+      let r = vec![E::Scalar::ZERO; h.len()];
+      let w: Vec<G1Affine<E>> = E::CE::batch_commit(ck, &h, r.as_slice())
+        .iter()
+        .map(|i| i.comm.affine())
+        .collect();
 
       // The prover computes the challenge to keep the transcript in the same
       // state as that of the verifier
